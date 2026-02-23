@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "667839011317",
+    "project_id": "intromobile-reactnative",
+    "storage_bucket": "intromobile-reactnative.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:667839011317:android:ae81e0ad88b5a5dd6868bc",
+        "android_client_info": {
+          "package_name": "com.ap.padelproject"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAZ94GF5NzvLkLCsp7ft5UHjKcpMVXh3Ho"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
