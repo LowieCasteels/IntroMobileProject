@@ -7,7 +7,8 @@ import {
   TextInput, 
   TouchableOpacity, 
   KeyboardAvoidingView, 
-  Platform 
+  Platform, 
+  Alert
 } from 'react-native';
 
 export default function RegisterScreen() {
@@ -25,6 +26,7 @@ export default function RegisterScreen() {
             <Text style={styles.subHeader}>Maak een account aan om verder te gaan</Text>
 
             <View style={styles.inputContainer}>
+            <Text style={styles.inputLabel}>Email</Text>
             <TextInput
                 placeholder="Email"
                 value={email}
@@ -33,6 +35,7 @@ export default function RegisterScreen() {
                 autoCapitalize="none"
                 keyboardType="email-address"
             />
+            <Text style={styles.inputLabel}>Wachtwoord</Text>
             <TextInput
                 placeholder="Wachtwoord"
                 value={password}
@@ -74,6 +77,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666',
     marginBottom: 32,
+  },
+  inputLabel: {
+    fontSize: 16,
+    color: '#1A1A1A',
+    marginBottom: 8,
   },
   inputContainer: {
     marginBottom: 24,
