@@ -1,3 +1,4 @@
+import { Link } from "expo-router";
 import { Text, View } from "react-native";
 
 const Index = () => {
@@ -9,7 +10,12 @@ const Index = () => {
         alignItems: "center",
       }}
     >
-      <Text>Edit app/index.tsx to edit this screen.</Text>
+      <Link href="/login" style={{ color: 'blue', fontSize: 18 }}>
+        Ga naar Login Scherm
+      </Link>
+      <Link href="/register" style={{ color: 'blue', fontSize: 18 }}>
+        Ga naar Registreer Scherm
+      </Link>
     </View>
   );
 }
