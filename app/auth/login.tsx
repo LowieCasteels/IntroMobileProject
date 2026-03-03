@@ -1,4 +1,6 @@
+import { auth } from '@/firebaseConfig';
 import { useRouter } from 'expo-router';
+import { signInWithEmailAndPassword } from 'firebase/auth';
 import React, { useState } from 'react';
 import { 
   StyleSheet, 
@@ -11,10 +13,19 @@ import {
   Alert
 } from 'react-native';
 
-export default function RegisterScreen() {
-    const router = useRouter()
+export default function LoginScreen() {
+    const router = useRouter();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+
+    const handleLogin = async () => {
+        try {
+            await signInWithEmailAndPassword(auth, email, password);
+            router.replace('/');
+        } catch (error: any) {
+            Alert.alert("Fout", error.message);
+        }
+        };
 
     return (
         <KeyboardAvoidingView 
@@ -22,8 +33,8 @@ export default function RegisterScreen() {
         style={styles.container}
         >
         <View style={styles.inner}>
-            <Text style={styles.header}>Welkom bij Padel</Text>
-            <Text style={styles.subHeader}>Maak een account aan om verder te gaan</Text>
+            <Text style={styles.header}>Welkom terug</Text>
+            <Text style={styles.subHeader}>Log in om verder te gaan</Text>
 
             <View style={styles.inputContainer}>
             <Text style={styles.inputLabel}>Email</Text>
@@ -45,12 +56,12 @@ export default function RegisterScreen() {
             />
             </View>
 
-            <TouchableOpacity style={styles.button} onPress={() => console.log('Registratie geprobeerd')}>
-            <Text style={styles.buttonText}>Registreer</Text>
+            <TouchableOpacity style={styles.button} onPress={handleLogin}>
+            <Text style={styles.buttonText}>Inloggen</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.outlineButton} onPress={() => router.push('/login')}>
-            <Text style={styles.outlineButtonText}>Ik heb al een account</Text>
+            <TouchableOpacity style={styles.outlineButton} onPress={() => router.push('./register')}>
+            <Text style={styles.outlineButtonText}>Account aanmaken</Text>
             </TouchableOpacity>
         </View>
         </KeyboardAvoidingView>
@@ -94,7 +105,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   button: {
-    backgroundColor: '#007AFF', // Apple Blauw
+    backgroundColor: '#007AFF',
     padding: 16,
     borderRadius: 12,
     alignItems: 'center',
