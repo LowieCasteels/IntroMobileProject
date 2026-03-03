@@ -11,21 +11,42 @@ import {
   Alert
 } from 'react-native';
 
-import { auth } from "../../firebaseConfig";
-import { createUserWithEmailAndPassword } from "firebase/auth";
+import { auth, db } from "../../firebaseConfig";
+import { createUserWithEmailAndPassword, deleteUser } from "firebase/auth";
+import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
 
 export default function RegisterScreen() {
     const router = useRouter()
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [firstName, setFirstName] = useState('');
+    const [lastName, setLastName] = useState('');
 
     const handleRegister = async () => {
-    try {
-        await createUserWithEmailAndPassword(auth, email, password);
-        router.replace('/');
-    } catch (error: any) {
-        Alert.alert("Fout", error.message);
-    }
+        if (!firstName || !lastName || !email || !password) {
+            Alert.alert("Fout", "Vul alstublieft alle velden in.");
+            return;
+        }
+        try {
+            const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+            const user = userCredential.user;
+
+            try {
+                await setDoc(doc(db, "users", user.uid), {
+                    createdAt: serverTimestamp(),
+                    email: email.toLowerCase(),
+                    firstName: firstName,
+                    lastName: lastName,
+                    rating: 1.5,
+                });
+                router.replace('/');
+            } catch (firestoreError: any) {
+                await deleteUser(user);
+                Alert.alert("Registratie mislukt", "Er is iets misgegaan bij het aanmaken van je profiel. Probeer het opnieuw.");
+            }
+        } catch (authError: any) {
+            Alert.alert("Fout bij registratie", authError.message);
+        }
     };
 
     return (
@@ -38,6 +59,22 @@ export default function RegisterScreen() {
             <Text style={styles.subHeader}>Maak een account aan om verder te gaan</Text>
 
             <View style={styles.inputContainer}>
+            <Text style={styles.inputLabel}>Voornaam</Text>
+            <TextInput
+                placeholder="Voornaam"
+                value={firstName}
+                onChangeText={setFirstName}
+                style={styles.input}
+                autoCapitalize="words"
+            />
+            <Text style={styles.inputLabel}>Achternaam</Text>
+            <TextInput
+                placeholder="Achternaam"
+                value={lastName}
+                onChangeText={setLastName}
+                style={styles.input}
+                autoCapitalize="words"
+            />
             <Text style={styles.inputLabel}>Email</Text>
             <TextInput
                 placeholder="Email"
@@ -61,7 +98,7 @@ export default function RegisterScreen() {
             <Text style={styles.buttonText}>Registreer</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.outlineButton} onPress={() => router.push('./login')}>
+            <TouchableOpacity style={styles.outlineButton} onPress={() => router.replace('./login')}>
             <Text style={styles.outlineButtonText}>Ik heb al een account</Text>
             </TouchableOpacity>
         </View>

@@ -60,7 +60,7 @@ export default function LoginScreen() {
             <Text style={styles.buttonText}>Inloggen</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.outlineButton} onPress={() => router.push('./register')}>
+            <TouchableOpacity style={styles.outlineButton} onPress={() => router.replace('./register')}>
             <Text style={styles.outlineButtonText}>Account aanmaken</Text>
             </TouchableOpacity>
         </View>
