@@ -14,6 +14,7 @@ import {
 import { auth, db } from "../../firebaseConfig";
 import { createUserWithEmailAndPassword, deleteUser } from "firebase/auth";
 import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
+import { UserData } from '../types';
 
 export default function RegisterScreen() {
     const router = useRouter()
@@ -32,14 +33,21 @@ export default function RegisterScreen() {
             const user = userCredential.user;
 
             try {
-                await setDoc(doc(db, "users", user.uid), {
-                    createdAt: serverTimestamp(),
-                    email: email.toLowerCase(),
+                const newUser: UserData = {
                     firstName: firstName,
                     lastName: lastName,
+                    email: email.toLowerCase(),
+                    gender: 'Zeg ik liever niet',
+                    birthDate: '',
+                    description: '',
+                    profilePictureUrl: '',
+                    createdAt: serverTimestamp(),
                     rating: 1.5,
-                });
+                };
+
+                await setDoc(doc(db, "users", user.uid), newUser);
                 router.replace('/');
+
             } catch (firestoreError: any) {
                 await deleteUser(user);
                 Alert.alert("Registratie mislukt", "Er is iets misgegaan bij het aanmaken van je profiel. Probeer het opnieuw.");
