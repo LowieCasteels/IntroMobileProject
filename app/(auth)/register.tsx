@@ -55,21 +55,21 @@ export default function RegisterScreen() {
         style={styles.container}
         >
         <View style={styles.inner}>
-            <Text style={styles.header}>Welkom bij Padel</Text>
-            <Text style={styles.subHeader}>Maak een account aan om verder te gaan</Text>
+            <Text style={styles.header}>Welcome to Padel</Text>
+            <Text style={styles.subHeader}>Create an account</Text>
 
             <View style={styles.inputContainer}>
-            <Text style={styles.inputLabel}>Voornaam</Text>
+            <Text style={styles.inputLabel}>Firstname</Text>
             <TextInput
-                placeholder="Voornaam"
+                placeholder="Firstname"
                 value={firstName}
                 onChangeText={setFirstName}
                 style={styles.input}
                 autoCapitalize="words"
             />
-            <Text style={styles.inputLabel}>Achternaam</Text>
+            <Text style={styles.inputLabel}>Lastname</Text>
             <TextInput
-                placeholder="Achternaam"
+                placeholder="Lastname"
                 value={lastName}
                 onChangeText={setLastName}
                 style={styles.input}
@@ -84,9 +84,9 @@ export default function RegisterScreen() {
                 autoCapitalize="none"
                 keyboardType="email-address"
             />
-            <Text style={styles.inputLabel}>Wachtwoord</Text>
+            <Text style={styles.inputLabel}>Password</Text>
             <TextInput
-                placeholder="Wachtwoord"
+                placeholder="Password"
                 value={password}
                 onChangeText={setPassword}
                 style={styles.input}
@@ -95,11 +95,11 @@ export default function RegisterScreen() {
             </View>
 
             <TouchableOpacity style={styles.button} onPress={handleRegister}>
-            <Text style={styles.buttonText}>Registreer</Text>
+            <Text style={styles.buttonText}>Register</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.outlineButton} onPress={() => router.replace('./login')}>
-            <Text style={styles.outlineButtonText}>Ik heb al een account</Text>
+            <Text style={styles.outlineButtonText}>Already have an account.</Text>
             </TouchableOpacity>
         </View>
         </KeyboardAvoidingView>

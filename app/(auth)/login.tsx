@@ -33,8 +33,8 @@ export default function LoginScreen() {
         style={styles.container}
         >
         <View style={styles.inner}>
-            <Text style={styles.header}>Welkom terug</Text>
-            <Text style={styles.subHeader}>Log in om verder te gaan</Text>
+            <Text style={styles.header}>Welcome back</Text>
+            <Text style={styles.subHeader}>Log in</Text>
 
             <View style={styles.inputContainer}>
             <Text style={styles.inputLabel}>Email</Text>
@@ -46,9 +46,9 @@ export default function LoginScreen() {
                 autoCapitalize="none"
                 keyboardType="email-address"
             />
-            <Text style={styles.inputLabel}>Wachtwoord</Text>
+            <Text style={styles.inputLabel}>Password</Text>
             <TextInput
-                placeholder="Wachtwoord"
+                placeholder="Password"
                 value={password}
                 onChangeText={setPassword}
                 style={styles.input}
@@ -57,11 +57,11 @@ export default function LoginScreen() {
             </View>
 
             <TouchableOpacity style={styles.button} onPress={handleLogin}>
-            <Text style={styles.buttonText}>Inloggen</Text>
+            <Text style={styles.buttonText}>Log in</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.outlineButton} onPress={() => router.replace('./register')}>
-            <Text style={styles.outlineButtonText}>Account aanmaken</Text>
+            <Text style={styles.outlineButtonText}>Create an account instead.</Text>
             </TouchableOpacity>
         </View>
         </KeyboardAvoidingView>

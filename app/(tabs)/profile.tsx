@@ -10,7 +10,7 @@ export default function ProfileScreen() {
   const handleLogout = async () => {
     try {
       await signOut(auth);
-      router.replace('/auth/login');
+      router.replace('/(auth)/login');
     } catch (error: any) {
       Alert.alert("Fout", `Uitloggen mislukt: ${error.message}`);
     }
@@ -18,11 +18,10 @@ export default function ProfileScreen() {
 
   return (
     <View style={styles.container}>
-        <Text style={styles.title}>Profiel</Text>
-        <Text>Hier komt de profielinformatie.</Text>
+        <Text style={styles.title}>Profile</Text>
 
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-            <Text style={styles.logoutButtonText}>Uitloggen</Text>
+            <Text style={styles.logoutButtonText}>Log out</Text>
         </TouchableOpacity>
     </View>
   );

@@ -10,23 +10,23 @@ export default function TabLayout() {
         headerShown: false,
       }}>
       <Tabs.Screen
-        name="locations"
+        name="home"
         options={{
-          title: 'Locaties',
-          tabBarIcon: ({ color }) => <FontAwesome5 name="map-marked-alt" size={24} color={color} />,
+          title: 'Home',
+          tabBarIcon: ({ color }) => <FontAwesome5 name="home" size={24} color={color} />,
         }}
       />
       <Tabs.Screen
-        name="matches"
+        name="community"
         options={{
-          title: 'Wedstrijden',
-          tabBarIcon: ({ color }) => <FontAwesome5 name="trophy" size={24} color={color} />,
+          title: 'Community',
+          tabBarIcon: ({ color }) => <FontAwesome5 name="users" size={24} color={color} />,
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
-          title: 'Profiel',
+          title: 'Profile',
           tabBarIcon: ({ color }) => <FontAwesome5 name="user-alt" size={24} color={color} />,
         }}
       />

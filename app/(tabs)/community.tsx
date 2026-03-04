@@ -4,8 +4,7 @@ import { View, Text, StyleSheet } from 'react-native';
 export default function MatchesScreen() {
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Wedstrijden</Text>
-      <Text>Hier komt de content voor wedstrijden.</Text>
+      <Text style={styles.title}>Community</Text>
     </View>
   );
 }
