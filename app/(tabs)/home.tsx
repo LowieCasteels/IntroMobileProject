@@ -119,7 +119,7 @@ function QuickAction({
       <View style={styles.quickCircle}>
         <Feather name={icon} size={30} color="#0B1B2B" />
       </View>
-      <Text style={styles.quickLabel} numberOfLines={1}>
+      <Text style={styles.quickLabel}>
         {label}
       </Text>
     </View>
@@ -202,6 +202,7 @@ const styles = StyleSheet.create({
   quickLabel: {
     fontSize: 14,
     color: "#1A2A3A",
+    textAlign: "center",
   },
 
   section: {
