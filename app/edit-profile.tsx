@@ -12,7 +12,7 @@ export default function EditProfileScreen() {
   const router = useRouter();
   const [userData, setUserData] = useState<UserData | null>(null);
   const [initials, setInitials] = useState('');
-  const [profilePic, setProfilePic] = useState<string | null>(null);
+  const [profilePic, setProfilePic] = useState<string | undefined>();
 
   // Form state
   const [fullName, setFullName] = useState('');
@@ -44,7 +44,6 @@ export default function EditProfileScreen() {
           setUserData(data);
 
           setFullName(`${data.firstName} ${data.lastName}`);
-          // setEmail(data.email); // Het 'userData' state-object bevat nu de email
           setGender(data.gender || 'Zeg ik liever niet');
           setDescription(data.description || '');
           if (data.birthDate) {
