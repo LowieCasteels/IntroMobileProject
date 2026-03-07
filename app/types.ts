@@ -8,4 +8,8 @@ export interface UserData {
     profilePictureUrl?: string;
     rating?: number;
     createdAt?: any;
+    beste_hand?: "Rechtshandig" | "Linkshandig" | "";
+    baanpositie?: "Links" | "Rechts" | "Beide" | "";
+    type_partij?: "Enkel" | "Dubbel" | "Competitief" | "";
+    favoriete_tijd?: "Ochtend" | "Avond" | "Weekend" | "";
 }

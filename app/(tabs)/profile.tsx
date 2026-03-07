@@ -1,43 +1,43 @@
 import { signOut } from 'firebase/auth';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { View, StyleSheet, Text, TouchableOpacity, Alert, Image } from 'react-native';
 import { auth, db } from '@/firebaseConfig';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { doc, getDoc } from 'firebase/firestore';
 import { UserData } from '../types';
 
+const PreferenceItem = ({ label, value }: { label: string, value: string | undefined | null }) => (
+  <View style={styles.preferenceItem}>
+    <Text style={styles.preferenceLabel}>{label}</Text>
+    {value ? (
+      <Text style={styles.preferenceValue}>{value}</Text>
+    ) : (
+      <Text style={styles.preferenceNotSet}>Niet beschreven</Text>
+    )}
+  </View>
+);
+
 export default function ProfileScreen() {
   const router = useRouter();
-  const [userName, setUserName] = useState('');
-  const [initials, setInitials] = useState('');
-  const [profilePic, setProfilePic] = useState<string | null>(null);
+  const [userData, setUserData] = useState<UserData | null>(null);
 
-  useEffect(() => {
-    const fetchUserData = async () => {
-      if (auth.currentUser) {
-        const docRef = doc(db, "users", auth.currentUser.uid);
-        const docSnap = await getDoc(docRef);
+  useFocusEffect(
+    useCallback(() => {
+      const fetchUserData = async () => {
+        if (auth.currentUser) {
+          const docRef = doc(db, "users", auth.currentUser.uid);
+          const docSnap = await getDoc(docRef);
 
-        if (docSnap.exists()) {
-          const userData = docSnap.data() as UserData;
-          const { firstName, lastName, profilePictureUrl } = userData;
-          setUserName(`${firstName} ${lastName}`);
-
-          const firstInitial = firstName?.[0] || '';
-          const lastInitial = lastName?.[0] || '';
-          setInitials(`${firstInitial}${lastInitial}`.toUpperCase());
-
-          if (profilePictureUrl) {
-            setProfilePic(profilePictureUrl);
+          if (docSnap.exists()) {
+            setUserData(docSnap.data() as UserData);
+          } else {
+            console.log("User document not found!");
           }
-        } else {
-          console.log("User document not found!");
         }
       }
-    };
-
-    fetchUserData();
-  }, []);
+      fetchUserData();
+    }, [])
+  );
 
   const handleLogout = async () => {
     try {
@@ -48,22 +48,41 @@ export default function ProfileScreen() {
     }
   };
 
+  const firstInitial = userData?.firstName?.[0] || '';
+  const lastInitial = userData?.lastName?.[0] || '';
+  const initials = `${firstInitial}${lastInitial}`.toUpperCase();
+
   return (
     <View style={styles.container}>
         <View style={styles.profileHeader}>
             <View style={styles.avatar}>
-                {profilePic ? (
-                    <Image source={{ uri: profilePic }} style={styles.avatarImage} />
+                {userData?.profilePictureUrl ? (
+                    <Image source={{ uri: userData.profilePictureUrl }} style={styles.avatarImage} />
                 ) : (
                     <Text style={styles.avatarInitials}>{initials}</Text>
                 )}
             </View>
-            <Text style={styles.title}>{userName || 'Gebruiker'}</Text>
+            <Text style={styles.title}>{userData ? `${userData.firstName} ${userData.lastName}` : 'Gebruiker'}</Text>
         </View>
 
         <TouchableOpacity style={styles.editProfileButton} onPress={() => router.push('/edit-profile')}>
             <Text style={styles.editProfileButtonText}>Profiel bewerken</Text>
         </TouchableOpacity>
+
+        <View style={styles.preferencesSection}>
+          <View style={styles.preferencesHeader}>
+              <Text style={styles.preferencesTitle}>Voorkeuren van de speler</Text>
+              <TouchableOpacity onPress={() => router.push('/edit-profile')}>
+                  <Text style={styles.editButton}>Bewerken</Text>
+              </TouchableOpacity>
+          </View>
+          <View style={styles.preferencesContainer}>
+            <PreferenceItem label="Beste hand" value={userData?.beste_hand} />
+            <PreferenceItem label="Baanpositie" value={userData?.baanpositie} />
+            <PreferenceItem label="Type partij" value={userData?.type_partij} />
+            <PreferenceItem label="Favoriete tijd" value={userData?.favoriete_tijd} />
+          </View>
+        </View>
 
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
             <Text style={styles.logoutButtonText}>Log out</Text>
@@ -134,5 +153,50 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  preferencesSection: {
+    width: '100%',
+    marginTop: 30,
+  },
+  preferencesHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  preferencesTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  editButton: {
+    color: '#007AFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  preferencesContainer: {
+    backgroundColor: '#f6f6f6',
+    borderRadius: 10,
+    padding: 15,
+  },
+  preferenceItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e9e9e9',
+  },
+  preferenceLabel: {
+    fontSize: 16,
+    color: '#333',
+  },
+  preferenceValue: {
+    fontSize: 16,
+    color: '#333',
+    fontWeight: '500',
+  },
+  preferenceNotSet: {
+    fontSize: 16,
+    color: '#007AFF',
+    fontWeight: '500',
   },
 });

@@ -41,6 +41,10 @@ export default function RegisterScreen() {
                     birthDate: '',
                     description: '',
                     profilePictureUrl: '',
+                    beste_hand: '',
+                    baanpositie: '',
+                    type_partij: '',
+                    favoriete_tijd: '',
                     createdAt: serverTimestamp(),
                     rating: 1.5,
                 };

@@ -23,7 +23,16 @@ export default function EditProfileScreen() {
   const [isGenderSheetVisible, setIsGenderSheetVisible] = useState(false);
   const [isModified, setIsModified] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [besteHand, setBesteHand] = useState<UserData['beste_hand']>();
+  const [baanpositie, setBaanpositie] = useState<UserData['baanpositie']>();
+  const [typePartij, setTypePartij] = useState<UserData['type_partij']>();
+  const [favorieteTijd, setFavorieteTijd] = useState<UserData['favoriete_tijd']>();
 
+  // Modal visibility states
+  const [showBesteHandSheet, setShowBesteHandSheet] = useState(false);
+  const [showBaanpositieSheet, setShowBaanpositieSheet] = useState(false);
+  const [showTypePartijSheet, setShowTypePartijSheet] = useState(false);
+  const [showFavorieteTijdSheet, setShowFavorieteTijdSheet] = useState(false);
   useEffect(() => {
     const fetchUserData = async () => {
       if (auth.currentUser) {
@@ -41,6 +50,10 @@ export default function EditProfileScreen() {
           if (data.birthDate) {
             setBirthDate(new Date(data.birthDate));
           }
+          setBesteHand(data.beste_hand);
+          setBaanpositie(data.baanpositie);
+          setTypePartij(data.type_partij);
+          setFavorieteTijd(data.favoriete_tijd);
 
           const firstInitial = data.firstName?.[0] || '';
           const lastInitial = data.lastName?.[0] || '';
@@ -68,11 +81,15 @@ export default function EditProfileScreen() {
         fullName !== initialFullName ||
         gender !== (userData.gender || 'Zeg ik liever niet') ||
         description !== (userData.description || '') ||
-        currentBirthDate !== initialBirthDate;
+        currentBirthDate !== initialBirthDate ||
+        besteHand !== userData.beste_hand ||
+        baanpositie !== userData.baanpositie ||
+        typePartij !== userData.type_partij ||
+        favorieteTijd !== userData.favoriete_tijd;
 
     setIsModified(hasChanged);
 
-  }, [fullName, gender, birthDate, description, userData]);
+  }, [fullName, gender, birthDate, description, userData, besteHand, baanpositie, typePartij, favorieteTijd]);
 
 
   const onDateChange = (event: any, selectedDate?: Date) => {
@@ -99,6 +116,10 @@ export default function EditProfileScreen() {
         gender,
         description,
         birthDate: birthDate ? birthDate.toISOString() : '',
+        beste_hand: besteHand || '',
+        baanpositie: baanpositie || '',
+        type_partij: typePartij || '',
+        favoriete_tijd: favorieteTijd || '',
     };
 
     try {
@@ -242,6 +263,70 @@ export default function EditProfileScreen() {
           <Text style={styles.charCounter}>{160 - (description?.length || 0)} tekens over</Text>
         </View>
       </View>
+
+      <View style={styles.formSection}>
+        <Text style={styles.sectionTitle}>Voorkeuren van de speler</Text>
+
+        {/* Beste Hand */}
+        <View style={styles.fieldContainer}>
+          <Text style={styles.label}>Beste hand</Text>
+          <TouchableOpacity onPress={() => setShowBesteHandSheet(true)} style={styles.dateInputContainer}>
+            <TextInput
+              style={[styles.input, { flex: 1, backgroundColor: 'transparent', paddingRight: 0 }]}
+              placeholder="Selecteer"
+              value={besteHand || ''}
+              editable={false}
+              pointerEvents="none"
+            />
+            <Ionicons name="chevron-down" size={20} color="gray" style={styles.calendarIcon} />
+          </TouchableOpacity>
+        </View>
+
+        {/* Baanpositie */}
+        <View style={styles.fieldContainer}>
+          <Text style={styles.label}>Baanpositie</Text>
+          <TouchableOpacity onPress={() => setShowBaanpositieSheet(true)} style={styles.dateInputContainer}>
+            <TextInput
+              style={[styles.input, { flex: 1, backgroundColor: 'transparent', paddingRight: 0 }]}
+              placeholder="Selecteer"
+              value={baanpositie || ''}
+              editable={false}
+              pointerEvents="none"
+            />
+            <Ionicons name="chevron-down" size={20} color="gray" style={styles.calendarIcon} />
+          </TouchableOpacity>
+        </View>
+
+        {/* Type Partij */}
+        <View style={styles.fieldContainer}>
+          <Text style={styles.label}>Type partij</Text>
+          <TouchableOpacity onPress={() => setShowTypePartijSheet(true)} style={styles.dateInputContainer}>
+            <TextInput
+              style={[styles.input, { flex: 1, backgroundColor: 'transparent', paddingRight: 0 }]}
+              placeholder="Selecteer"
+              value={typePartij || ''}
+              editable={false}
+              pointerEvents="none"
+            />
+            <Ionicons name="chevron-down" size={20} color="gray" style={styles.calendarIcon} />
+          </TouchableOpacity>
+        </View>
+
+        {/* Favoriete Tijd */}
+        <View style={styles.fieldContainer}>
+          <Text style={styles.label}>Favoriete tijd om te spelen</Text>
+          <TouchableOpacity onPress={() => setShowFavorieteTijdSheet(true)} style={styles.dateInputContainer}>
+            <TextInput
+              style={[styles.input, { flex: 1, backgroundColor: 'transparent', paddingRight: 0 }]}
+              placeholder="Selecteer"
+              value={favorieteTijd || ''}
+              editable={false}
+              pointerEvents="none"
+            />
+            <Ionicons name="chevron-down" size={20} color="gray" style={styles.calendarIcon} />
+          </TouchableOpacity>
+        </View>
+      </View>
       </ScrollView>
 
       <Modal
@@ -269,6 +354,130 @@ export default function EditProfileScreen() {
                       }
                       setGender(valueToSet);
                       setIsGenderSheetVisible(false);
+                    }}
+                  >
+                    <Text style={styles.optionText}>{option}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
+
+      {/* Beste Hand Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={showBesteHandSheet}
+        onRequestClose={() => setShowBesteHandSheet(false)}
+      >
+        <TouchableWithoutFeedback onPress={() => setShowBesteHandSheet(false)}>
+          <View style={styles.modalOverlay}>
+            <TouchableWithoutFeedback>
+              <View style={styles.bottomSheetContainer}>
+                <View style={styles.dragHandle} />
+                <Text style={styles.bottomSheetTitle}>Kies je beste hand</Text>
+                {['Rechtshandig', 'Linkshandig'].map((option) => (
+                  <TouchableOpacity
+                    key={option}
+                    style={styles.optionButton}
+                    onPress={() => {
+                      setBesteHand(option as UserData['beste_hand']);
+                      setShowBesteHandSheet(false);
+                    }}
+                  >
+                    <Text style={styles.optionText}>{option}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
+
+      {/* Baanpositie Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={showBaanpositieSheet}
+        onRequestClose={() => setShowBaanpositieSheet(false)}
+      >
+        <TouchableWithoutFeedback onPress={() => setShowBaanpositieSheet(false)}>
+          <View style={styles.modalOverlay}>
+            <TouchableWithoutFeedback>
+              <View style={styles.bottomSheetContainer}>
+                <View style={styles.dragHandle} />
+                <Text style={styles.bottomSheetTitle}>Kies je baanpositie</Text>
+                {['Links', 'Rechts', 'Beide'].map((option) => (
+                  <TouchableOpacity
+                    key={option}
+                    style={styles.optionButton}
+                    onPress={() => {
+                      setBaanpositie(option as UserData['baanpositie']);
+                      setShowBaanpositieSheet(false);
+                    }}
+                  >
+                    <Text style={styles.optionText}>{option}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
+
+      {/* Type Partij Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={showTypePartijSheet}
+        onRequestClose={() => setShowTypePartijSheet(false)}
+      >
+        <TouchableWithoutFeedback onPress={() => setShowTypePartijSheet(false)}>
+          <View style={styles.modalOverlay}>
+            <TouchableWithoutFeedback>
+              <View style={styles.bottomSheetContainer}>
+                <View style={styles.dragHandle} />
+                <Text style={styles.bottomSheetTitle}>Kies je type partij</Text>
+                {['Enkel', 'Dubbel', 'Competitief'].map((option) => (
+                  <TouchableOpacity
+                    key={option}
+                    style={styles.optionButton}
+                    onPress={() => {
+                      setTypePartij(option as UserData['type_partij']);
+                      setShowTypePartijSheet(false);
+                    }}
+                  >
+                    <Text style={styles.optionText}>{option}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
+
+      {/* Favoriete Tijd Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={showFavorieteTijdSheet}
+        onRequestClose={() => setShowFavorieteTijdSheet(false)}
+      >
+        <TouchableWithoutFeedback onPress={() => setShowFavorieteTijdSheet(false)}>
+          <View style={styles.modalOverlay}>
+            <TouchableWithoutFeedback>
+              <View style={styles.bottomSheetContainer}>
+                <View style={styles.dragHandle} />
+                <Text style={styles.bottomSheetTitle}>Kies je favoriete speeltijd</Text>
+                {['Ochtend', 'Avond', 'Weekend'].map((option) => (
+                  <TouchableOpacity
+                    key={option}
+                    style={styles.optionButton}
+                    onPress={() => {
+                      setFavorieteTijd(option as UserData['favoriete_tijd']);
+                      setShowFavorieteTijdSheet(false);
                     }}
                   >
                     <Text style={styles.optionText}>{option}</Text>
