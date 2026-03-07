@@ -1,6 +1,6 @@
 import React from 'react';
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Feather} from "@expo/vector-icons";
+import { Feather, MaterialCommunityIcons} from "@expo/vector-icons";
 import {
   Image,
   ScrollView,
@@ -41,10 +41,10 @@ export default function LocationsScreen() {
           </Text>
 
           <View style={styles.quickRow}>
-            <QuickAction icon="grid" label="Een baan boeken" />
-            <QuickAction icon="book-open" label="Leren" />
-            <QuickAction icon="award" label="Wedstrijden" />
-            <QuickAction icon="search" label="Zoek een match" />
+            <QuickAction icon="soccer-field" label="Een baan boeken" />
+            <QuickAction icon="school" label="Leren" />
+            <QuickAction icon="trophy" label="Wedstrijden" />
+            <QuickAction icon="tennis-ball-outline" label="Zoek een match" />
           </View>
         </View>
 
@@ -111,13 +111,13 @@ function QuickAction({
   icon,
   label,
 }: {
-  icon: React.ComponentProps<typeof Feather>["name"];
+  icon: React.ComponentProps<typeof MaterialCommunityIcons>["name"];
   label: string;
 }) {
   return (
     <View style={styles.quickItem}>
       <View style={styles.quickCircle}>
-        <Feather name={icon} size={30} color="#0B1B2B" />
+        <MaterialCommunityIcons name={icon} size={38} color="#0B1B2B" />
       </View>
       <Text style={styles.quickLabel}>
         {label}
@@ -201,8 +201,9 @@ const styles = StyleSheet.create({
   },
   quickLabel: {
     fontSize: 14,
+    display: "flex",
     color: "#1A2A3A",
-    textAlign: "center",
+    textAlign: "center"
   },
 
   section: {
