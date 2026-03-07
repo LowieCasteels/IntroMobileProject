@@ -7,6 +7,7 @@ import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { UserData } from './types';
+import * as ImagePicker from 'expo-image-picker';
 
 export default function EditProfileScreen() {
   const router = useRouter();
@@ -84,11 +85,12 @@ export default function EditProfileScreen() {
         besteHand !== userData.beste_hand ||
         baanpositie !== userData.baanpositie ||
         typePartij !== userData.type_partij ||
-        favorieteTijd !== userData.favoriete_tijd;
+        favorieteTijd !== userData.favoriete_tijd ||
+        profilePic !== userData.profilePictureUrl;
 
     setIsModified(hasChanged);
 
-  }, [fullName, gender, birthDate, description, userData, besteHand, baanpositie, typePartij, favorieteTijd]);
+  }, [fullName, gender, birthDate, description, userData, besteHand, baanpositie, typePartij, favorieteTijd, profilePic]);
 
 
   const onDateChange = (event: any, selectedDate?: Date) => {
@@ -100,6 +102,27 @@ export default function EditProfileScreen() {
     }
   };
 
+  const handleImagePick = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+        Alert.alert('Toestemming vereist', 'Sorry, we hebben toegang tot je foto\'s nodig om dit te laten werken!');
+        return;
+    }
+
+    let result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.5, // Lower quality to reduce base64 size
+        base64: true,
+    });
+
+    if (!result.canceled && result.assets[0].base64) {
+        const asset = result.assets[0];
+        const dataUri = `data:${asset.mimeType};base64,${asset.base64}`;
+        setProfilePic(dataUri);
+    }
+  };
   const handleSave = async () => {
     if (!auth.currentUser || !isModified || isSaving) return;
 
@@ -119,16 +142,30 @@ export default function EditProfileScreen() {
         baanpositie: baanpositie || '',
         type_partij: typePartij || '',
         favoriete_tijd: favorieteTijd || '',
+        profilePictureUrl: profilePic,
     };
 
     try {
+        // Firestore has a 1MB document size limit. Base64 encoding adds ~33% overhead.
+        // We'll check if the base64 string is getting too large to prevent errors.
+        // 750,000 chars is roughly 560KB, leaving room for other data.
+        if (profilePic && profilePic.length > 750000) {
+            Alert.alert("Afbeelding te groot", "De geselecteerde afbeelding is te groot. Kies een kleinere afbeelding of verlaag de kwaliteit.");
+            setIsSaving(false);
+            return;
+        }
+
         const docRef = doc(db, "users", auth.currentUser.uid);
         await updateDoc(docRef, updatedData);
+        setUserData(prev => ({ ...prev, ...updatedData } as UserData));
         Alert.alert("Succes", "Je profiel is bijgewerkt.");
         setIsModified(false);
-    } catch (error) {
+    } catch (error: any) {
         console.error("Error updating document: ", error);
-        Alert.alert("Fout", "Er is iets misgegaan bij het opslaan van je profiel.");
+        const errorMessage = error.code === 'invalid-argument'
+            ? "De afbeelding is te groot om op te slaan."
+            : "Er is iets misgegaan bij het opslaan van je profiel.";
+        Alert.alert("Fout", errorMessage);
     } finally {
         setIsSaving(false);
     }
@@ -158,7 +195,7 @@ export default function EditProfileScreen() {
                 <Text style={styles.avatarInitials}>{initials}</Text>
             )}
         </View>
-        <TouchableOpacity>
+        <TouchableOpacity onPress={handleImagePick}>
           <Text style={styles.changePicText}>Profielfoto wijzigen</Text>
         </TouchableOpacity>
       </View>

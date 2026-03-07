@@ -12,4 +12,7 @@ export interface UserData {
     baanpositie?: "Links" | "Rechts" | "Beide" | "";
     type_partij?: "Enkel" | "Dubbel" | "Competitief" | "";
     favoriete_tijd?: "Ochtend" | "Avond" | "Weekend" | "";
+    gamesPlayed?: number;
+    wins?: number;
+    losses?: number;
 }

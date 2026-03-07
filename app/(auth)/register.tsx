@@ -47,6 +47,9 @@ export default function RegisterScreen() {
                     favoriete_tijd: '',
                     createdAt: serverTimestamp(),
                     rating: 1.5,
+                    gamesPlayed: 0,
+                    wins: 0,
+                    losses: 0,
                 };
 
                 await setDoc(doc(db, "users", user.uid), newUser);

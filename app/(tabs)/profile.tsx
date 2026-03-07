@@ -17,6 +17,13 @@ const PreferenceItem = ({ label, value }: { label: string, value: string | undef
   </View>
 );
 
+const StatItem = ({ label, value }: { label: string, value: string | number | undefined | null }) => (
+    <View style={styles.statItem}>
+        <Text style={styles.statValue}>{value ?? '-'}</Text>
+        <Text style={styles.statLabel}>{label}</Text>
+    </View>
+);
+
 export default function ProfileScreen() {
   const router = useRouter();
   const [userData, setUserData] = useState<UserData | null>(null);
@@ -68,6 +75,13 @@ export default function ProfileScreen() {
         <TouchableOpacity style={styles.editProfileButton} onPress={() => router.push('/edit-profile')}>
             <Text style={styles.editProfileButtonText}>Profiel bewerken</Text>
         </TouchableOpacity>
+
+        <View style={styles.statsSection}>
+            <StatItem label="Rating" value={userData?.rating?.toFixed(2)} />
+            <StatItem label="Gespeeld" value={userData?.gamesPlayed} />
+            <StatItem label="Gewonnen" value={userData?.wins} />
+            <StatItem label="Verloren" value={userData?.losses} />
+        </View>
 
         <View style={styles.preferencesSection}>
           <View style={styles.preferencesHeader}>
@@ -154,9 +168,31 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
   },
+  statsSection: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    width: '100%',
+    backgroundColor: '#f6f6f6',
+    paddingVertical: 20,
+    borderRadius: 10,
+    marginTop: 20,
+  },
+  statItem: {
+    alignItems: 'center',
+  },
+  statValue: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#0e2432',
+  },
+  statLabel: {
+    fontSize: 14,
+    color: 'gray',
+    marginTop: 4,
+  },
   preferencesSection: {
     width: '100%',
-    marginTop: 30,
+    marginTop: 20,
   },
   preferencesHeader: {
     flexDirection: 'row',
