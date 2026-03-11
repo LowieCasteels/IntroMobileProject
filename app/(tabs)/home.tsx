@@ -46,7 +46,7 @@ export default function LocationsScreen() {
             <QuickAction icon="soccer-field" label="Een baan boeken" onPress={() => router.push('/search')} />
             <QuickAction icon="school" label="Leren" />
             <QuickAction icon="trophy" label="Wedstrijden" />
-            <QuickAction icon="tennis-ball-outline" label="Zoek een match" />
+            <QuickAction icon="tennis-ball-outline" label="Zoek een match" onPress={() => router.push('/match')}/>
           </View>
         </View>
 
