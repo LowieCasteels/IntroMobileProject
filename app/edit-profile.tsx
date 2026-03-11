@@ -58,9 +58,7 @@ export default function EditProfileScreen() {
           const firstInitial = data.firstName?.[0] || '';
           const lastInitial = data.lastName?.[0] || '';
           setInitials(`${firstInitial}${lastInitial}`.toUpperCase());
-          if (data.profilePictureUrl) {
-            setProfilePic(data.profilePictureUrl);
-          }
+          setProfilePic(data.profilePictureUrl);
         } else {
           console.log("User document not found!");
         }
@@ -113,7 +111,7 @@ export default function EditProfileScreen() {
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
         aspect: [1, 1],
-        quality: 0.5, // Lower quality to reduce base64 size
+        quality: 0.5,
         base64: true,
     });
 
@@ -142,13 +140,10 @@ export default function EditProfileScreen() {
         baanpositie: baanpositie || '',
         type_partij: typePartij || '',
         favoriete_tijd: favorieteTijd || '',
-        profilePictureUrl: profilePic,
+        profilePictureUrl: profilePic ?? '',
     };
 
     try {
-        // Firestore has a 1MB document size limit. Base64 encoding adds ~33% overhead.
-        // We'll check if the base64 string is getting too large to prevent errors.
-        // 750,000 chars is roughly 560KB, leaving room for other data.
         if (profilePic && profilePic.length > 750000) {
             Alert.alert("Afbeelding te groot", "De geselecteerde afbeelding is te groot. Kies een kleinere afbeelding of verlaag de kwaliteit.");
             setIsSaving(false);

@@ -86,9 +86,9 @@ export default function ProfileScreen() {
         <View style={styles.preferencesSection}>
           <View style={styles.preferencesHeader}>
               <Text style={styles.preferencesTitle}>Voorkeuren van de speler</Text>
-              <TouchableOpacity onPress={() => router.push('/edit-profile')}>
+              {/* <TouchableOpacity onPress={() => router.push('/edit-profile')}>
                   <Text style={styles.editButton}>Bewerken</Text>
-              </TouchableOpacity>
+              </TouchableOpacity> */}
           </View>
           <View style={styles.preferencesContainer}>
             <PreferenceItem label="Beste hand" value={userData?.beste_hand} />
