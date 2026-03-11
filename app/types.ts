@@ -1,3 +1,5 @@
+import { GeoPoint, Timestamp } from "firebase/firestore";
+
 export interface UserData {
     firstName: string;
     lastName: string;
@@ -15,4 +17,34 @@ export interface UserData {
     gamesPlayed?: number;
     wins?: number;
     losses?: number;
+}
+
+export interface Club {
+    id: string; // Document ID from Firestore
+    name: string;
+    imageUrl: string;
+    minPrice: number;
+    address: {
+        street: string;
+        city: string;
+        postalCode: string;
+    };
+    location: GeoPoint;
+    facilities: string[];
+}
+
+export interface Court {
+    id: string; // Document ID
+    name: string;
+    type: "indoor" | "outdoor";
+    surface: "kunstgras" | "gravel" | "hardcourt";
+}
+
+export interface Booking {
+    id: string; // Document ID
+    clubId: string;
+    courtId: string;
+    userId: string;
+    startTime: Timestamp;
+    endTime: Timestamp;
 }

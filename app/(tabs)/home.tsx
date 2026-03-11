@@ -1,6 +1,7 @@
 import React from 'react';
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather, MaterialCommunityIcons} from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import {
   Image,
   ScrollView,
@@ -9,6 +10,7 @@ import {
 } from "react-native";
 
 export default function LocationsScreen() {
+  const router = useRouter();
   return (
     <View style={styles.root}>
       <StatusBar barStyle="light-content" />
@@ -41,7 +43,7 @@ export default function LocationsScreen() {
           </Text>
 
           <View style={styles.quickRow}>
-            <QuickAction icon="soccer-field" label="Een baan boeken" />
+            <QuickAction icon="soccer-field" label="Een baan boeken" onPress={() => router.push('/search')} />
             <QuickAction icon="school" label="Leren" />
             <QuickAction icon="trophy" label="Wedstrijden" />
             <QuickAction icon="tennis-ball-outline" label="Zoek een match" />
@@ -110,19 +112,21 @@ export default function LocationsScreen() {
 function QuickAction({
   icon,
   label,
+  onPress,
 }: {
   icon: React.ComponentProps<typeof MaterialCommunityIcons>["name"];
   label: string;
+  onPress?: () => void;
 }) {
   return (
-    <View style={styles.quickItem}>
+    <TouchableOpacity style={styles.quickItem} onPress={onPress} activeOpacity={onPress ? 0.7 : 1}>
       <View style={styles.quickCircle}>
         <MaterialCommunityIcons name={icon} size={38} color="#0B1B2B" />
       </View>
       <Text style={styles.quickLabel}>
         {label}
       </Text>
-    </View>
+    </TouchableOpacity>
   );
 }
 
