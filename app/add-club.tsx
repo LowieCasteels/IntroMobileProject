@@ -5,6 +5,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { addDoc, collection, GeoPoint } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
+import { Court } from './types';
 import * as ImagePicker from 'expo-image-picker';
 
 export default function AddClubScreen() {
@@ -40,6 +41,19 @@ export default function AddClubScreen() {
     }
   };
 
+  const addDefaultCourts = async (clubId: string) => {
+    const courts: Omit<Court, 'id'>[] = [
+        { name: 'Court 1', type: 'indoor', surface: 'kunstgras' },
+        { name: 'Court 2 | Pepsi Max', type: 'indoor', surface: 'kunstgras' },
+        { name: 'Court 3', type: 'outdoor', surface: 'hardcourt' },
+    ];
+
+    for (const courtData of courts) {
+        const courtColRef = collection(db, 'clubs', clubId, 'courts');
+        await addDoc(courtColRef, courtData);
+    }
+  };
+
   const handleSave = async () => {
     if (!name || !minPrice) {
       Alert.alert('Fout', 'Vul minimaal naam en prijs in.');
@@ -67,7 +81,10 @@ export default function AddClubScreen() {
         facilities: facilities.split(',').map(f => f.trim()).filter(f => f),
       };
 
-      await addDoc(collection(db, 'clubs'), newClub);
+      const docRef = await addDoc(collection(db, 'clubs'), newClub);
+
+      // Automatically add some default courts for testing
+      await addDefaultCourts(docRef.id);
 
       Alert.alert('Succes', 'Club succesvol toegevoegd!');
       router.back();

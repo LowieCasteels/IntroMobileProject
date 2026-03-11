@@ -8,28 +8,31 @@ import { db } from '../firebaseConfig';
 import { Club } from './types';
 
 // Club Card Component
-const ClubCard = ({ club }: { club: Club }) => (
-  <View style={styles.card}>
-    <ImageBackground source={{ uri: club.imageUrl }} style={styles.cardImage} imageStyle={{ borderRadius: 12 }}>
-      <View style={styles.priceOverlay}>
-        <Text style={styles.priceText}>Vanaf € {club.minPrice} per uur</Text>
+const ClubCard = ({ club }: { club: Club }) => {
+  const router = useRouter();
+  return (
+    <TouchableOpacity style={styles.card} onPress={() => router.push(`./club/${club.id}`)} activeOpacity={0.8}>
+      <ImageBackground source={{ uri: club.imageUrl }} style={styles.cardImage} imageStyle={{ borderRadius: 12 }}>
+        <View style={styles.priceOverlay}>
+          <Text style={styles.priceText}>Vanaf € {club.minPrice} per uur</Text>
+        </View>
+      </ImageBackground>
+      <View style={styles.cardBody}>
+        <Text style={styles.cardTitle}>{club.name}</Text>
+        {/* TODO: Afstand berekenen op basis van de locatie van de gebruiker */}
+        <Text style={styles.cardDistance}>{Math.floor(Math.random() * 10) + 1}km</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.timeScrollView}>
+          {/* TODO: Beschikbare tijden ophalen uit de 'bookings' collectie */}
+          {['15:00', '15:30', '16:00', '16:30', '22:30', '23:00'].map((time, index) => (
+            <TouchableOpacity key={index} style={styles.timeSlot}>
+              <Text style={styles.timeText}>{time}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
       </View>
-    </ImageBackground>
-    <View style={styles.cardBody}>
-      <Text style={styles.cardTitle}>{club.name}</Text>
-      {/* TODO: Afstand berekenen op basis van de locatie van de gebruiker */}
-      <Text style={styles.cardDistance}>{Math.floor(Math.random() * 10) + 1}km</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.timeScrollView}>
-        {/* TODO: Beschikbare tijden ophalen uit de 'bookings' collectie */}
-        {['15:00', '15:30', '16:00', '16:30', '22:30', '23:00'].map((time, index) => (
-          <TouchableOpacity key={index} style={styles.timeSlot}>
-            <Text style={styles.timeText}>{time}</Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
-    </View>
-  </View>
-);
+    </TouchableOpacity>
+  );
+};
 
 export default function SearchScreen() {
   const router = useRouter();

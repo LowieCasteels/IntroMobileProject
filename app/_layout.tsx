@@ -9,6 +9,7 @@ export default function RootLayout() {
       <Stack.Screen name="register" />
       <Stack.Screen name="search" />
       <Stack.Screen name="add-club" />
+      <Stack.Screen name="club/[id]" />
       <Stack.Screen name="(tabs)" />
     </Stack>
   );
