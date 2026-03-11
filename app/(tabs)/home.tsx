@@ -97,10 +97,44 @@ export default function LocationsScreen() {
         {/* Activities */}
         <View style={styles.section}>
           <Text style={styles.activitiesTitle}>Activiteiten</Text>
+          <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.activitiesRow}>
           <View style={styles.activitiesRow}>
-            <View style={styles.placeholderCard} />
-            <View style={styles.placeholderCard} />
+
+            <View style={styles.placeholderCard}>
+              <View style={styles.iconContainer}>
+                  <Image
+                    source={require("../../assets/images/tennisbasket.png")}
+                    style={styles.icon}
+                  />
+              </View>
+              <Text style={styles.placeholderText}>Privélessen</Text>
+            </View>
+
+            <View style={styles.placeholderCard}>
+              <View style={styles.iconContainer}>
+                  <Image
+                    source={require("../../assets/images/twotennis.png")}
+                    style={styles.icon}
+                  />
+              </View>
+              <Text style={[styles.placeholderText, {marginLeft: 15}]}>Openbare lessen</Text>
+            </View>
+
+            <View style={styles.placeholderCard}>
+              <View style={styles.iconContainer}>
+                  <Image
+                    source={require("../../assets/images/bookopen.png")}
+                    style={styles.icon}
+                  />
+              </View>
+              <Text style={styles.placeholderText}>Cursussen</Text>
+            </View>
+
           </View>
+          </ScrollView>
         </View>
       </ScrollView>
     </View>
@@ -308,7 +342,7 @@ const styles = StyleSheet.create({
   },
 
   activitiesTitle: {
-    fontSize: 30,
+    fontSize: 18,
     fontWeight: "800",
     color: "#13202B",
     marginBottom: 14,
@@ -319,12 +353,27 @@ const styles = StyleSheet.create({
   },
   placeholderCard: {
     flex: 1,
-    height: 110,
-    backgroundColor: "#FFFFFF",
+    height: 70,
+    width: 150,
+    backgroundColor: "#F1F3F7",
     borderRadius: 16,
     shadowColor: "#000",
     shadowOpacity: 0.04,
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 6 },
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    paddingRight: 10,
   },
+  placeholderText:{
+    flexShrink: 1,
+  },
+  iconContainer:{
+  marginRight: 10,
+  },
+  icon:{
+    width:50,
+    height: 50,
+  }
 });
