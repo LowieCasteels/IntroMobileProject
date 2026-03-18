@@ -77,7 +77,7 @@ export default function ProfileScreen() {
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.myBookingsButton} onPress={() => router.push('/(tabs)/my-bookings')}>
-            <Text style={styles.myBookingsButtonText}>Mijn Boekingen</Text>
+            <Text style={styles.myBookingsButtonText}>Mijn boekingen</Text>
         </TouchableOpacity>
 
         <View style={styles.statsSection}>

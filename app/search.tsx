@@ -4,12 +4,32 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, Feather } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { collection, getDocs } from 'firebase/firestore';
+import { query, limit } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
-import { Club } from './types';
+import { Club, ClubTimeSlot } from './types';
 
 // Club Card Component
-const ClubCard = ({ club }: { club: Club }) => {
+const ClubCard = ({ club }: { club: Club }) => { // Removed `availableTimes` prop
   const router = useRouter();
+  const [clubTimeSlots, setClubTimeSlots] = useState<ClubTimeSlot[]>([]);
+
+  useEffect(() => {
+    const fetchClubTimeSlots = async () => {
+      try {
+        const timeSlotsRef = collection(db, 'clubs', club.id, 'timeSlots');
+        const q = query(timeSlotsRef, limit(6)); // Limit to 6 time slots for display
+        const timeSlotsSnap = await getDocs(q);
+        const timeSlotsList = timeSlotsSnap.docs.map(doc => ({
+          id: doc.id, ...doc.data()
+        } as ClubTimeSlot));
+        setClubTimeSlots(timeSlotsList.sort((a, b) => a.time.localeCompare(b.time)));
+      } catch (error) {
+        console.error(`Error fetching time slots for club ${club.id}: `, error);
+      }
+    };
+    fetchClubTimeSlots();
+  }, [club.id]);
+
   return (
     <TouchableOpacity style={styles.card} onPress={() => router.push(`./club/${club.id}`)} activeOpacity={0.8}>
       <ImageBackground source={{ uri: club.imageUrl }} style={styles.cardImage} imageStyle={{ borderRadius: 12 }}>
@@ -19,13 +39,11 @@ const ClubCard = ({ club }: { club: Club }) => {
       </ImageBackground>
       <View style={styles.cardBody}>
         <Text style={styles.cardTitle}>{club.name}</Text>
-        {/* TODO: Afstand berekenen op basis van de locatie van de gebruiker */}
         <Text style={styles.cardDistance}>{Math.floor(Math.random() * 10) + 1}km</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.timeScrollView}>
-          {/* TODO: Beschikbare tijden ophalen uit de 'bookings' collectie */}
-          {['15:00', '15:30', '16:00', '16:30', '22:30', '23:00'].map((time, index) => (
+          {clubTimeSlots.map((timeSlot, index) => (
             <TouchableOpacity key={index} style={styles.timeSlot}>
-              <Text style={styles.timeText}>{time}</Text>
+              <Text style={styles.timeText}>{timeSlot.time}</Text>
             </TouchableOpacity>
           ))}
         </ScrollView>

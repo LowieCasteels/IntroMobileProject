@@ -48,3 +48,10 @@ export interface Booking {
     startTime: Timestamp;
     endTime: Timestamp;
 }
+
+export interface ClubTimeSlot {
+    id: string;
+    time: string;
+    duration: number;
+    price: number;
+}

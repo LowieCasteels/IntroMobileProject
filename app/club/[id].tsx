@@ -5,7 +5,7 @@ import { Ionicons, Feather } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { doc, getDoc, collection, getDocs, addDoc, query, where, Timestamp } from 'firebase/firestore';
 import { db, auth } from '../../firebaseConfig';
-import { Club, Court, Booking } from '../types';
+import { Club, Court, Booking, ClubTimeSlot } from '../types';
 
 const getNext7Days = () => {
     const days = ['MA', 'DI', 'WO', 'DO', 'VR', 'ZA', 'ZO'];
@@ -24,10 +24,10 @@ const getNext7Days = () => {
     return result;
 };
 
-const availableTimes = ['16:00', '16:30', '17:00', '17:30', '18:00', '18:30', '19:00', '19:30', '20:00', '22:30', '23:00'];
-
-const CourtAccordionItem = ({ court, isExpanded, onToggle, onBook, isBookable, isAvailable }: { court: Court, isExpanded: boolean, onToggle: () => void, onBook: () => void, isBookable: boolean, isAvailable: boolean }) => {
+const CourtAccordionItem = ({ court, isExpanded, onToggle, onBook, isBookable, isAvailable, price, duration }: { court: Court, isExpanded: boolean, onToggle: () => void, onBook: () => void, isBookable: boolean, isAvailable: boolean, price: number | null, duration: number | null }) => {
     const features = `${court.type === 'indoor' ? 'Binnen' : 'Buiten'} | Glas | Dubbelspel`;
+    const displayPrice = price !== null ? `€ ${price}` : 'N/A';
+    const displayDuration = duration !== null ? `${duration} min` : 'N/A';
     return (
         <View style={[styles.courtContainer, !isAvailable && styles.disabledCourtContainer]}>
             <TouchableOpacity style={styles.courtHeader} onPress={onToggle} activeOpacity={0.7} disabled={!isAvailable}>
@@ -39,8 +39,9 @@ const CourtAccordionItem = ({ court, isExpanded, onToggle, onBook, isBookable, i
             </TouchableOpacity>
             {isExpanded && isAvailable && (
                 <View style={styles.courtBody}>
-                    <TouchableOpacity style={[styles.bookingCard, !isBookable && styles.disabledBookingCard]} activeOpacity={0.8} onPress={onBook} disabled={!isBookable || !isAvailable}>
-                        <Text style={styles.bookingPrice}>€ 42</Text><Text style={styles.bookingDuration}>90 min</Text>
+                    <TouchableOpacity style={[styles.bookingCard, !isBookable && styles.disabledBookingCard]} activeOpacity={0.8} onPress={onBook} disabled={!isBookable || !isAvailable || price === null || duration === null}>
+                        <Text style={styles.bookingPrice}>{displayPrice}</Text>
+                        <Text style={styles.bookingDuration}>{displayDuration}</Text>
                     </TouchableOpacity>
                 </View>
             )}
@@ -61,6 +62,7 @@ export default function ClubDetailScreen() {
     const [isBooking, setIsBooking] = useState(false);
     const [displayableTimes, setDisplayableTimes] = useState<string[]>([]);
     const [loadingTimes, setLoadingTimes] = useState(true);
+    const [clubTimeSlots, setClubTimeSlots] = useState<ClubTimeSlot[]>([]);
     const [bookingsForDay, setBookingsForDay] = useState<Booking[]>([]);
     const [availableCourts, setAvailableCourts] = useState<Set<string>>(new Set());
 
@@ -84,6 +86,14 @@ export default function ClubDetailScreen() {
                         ...doc.data()
                     } as Court));
                     setCourts(courtsList);
+
+                    // Fetch timeSlots subcollection
+                    const timeSlotsRef = collection(db, 'clubs', id, 'timeSlots');
+                    const timeSlotsSnap = await getDocs(timeSlotsRef);
+                    const timeSlotsList = timeSlotsSnap.docs.map(doc => ({
+                        id: doc.id, ...doc.data()
+                    } as ClubTimeSlot));
+                    setClubTimeSlots(timeSlotsList.sort((a, b) => a.time.localeCompare(b.time))); // Sort by time
                 } else {
                     console.log("No such document!");
                 }
@@ -101,7 +111,7 @@ export default function ClubDetailScreen() {
 
     useEffect(() => {
         if (!id || courts.length === 0) {
-            setDisplayableTimes(availableTimes);
+            setDisplayableTimes([]); // No time slots available if no club or courts
             return;
         }
     
@@ -133,7 +143,7 @@ export default function ClubDetailScreen() {
                     }
                 });
     
-                const filteredTimes = availableTimes.filter(timeSlot => {
+                const filteredTimes = clubTimeSlots.map(ts => ts.time).filter(timeSlot => {
                     const [hours, minutes] = timeSlot.split(':').map(Number);
                     const slotDate = new Date(selectedDay);
                     slotDate.setHours(hours, minutes, 0, 0);
@@ -161,7 +171,7 @@ export default function ClubDetailScreen() {
         };
     
         fetchAndFilterTimes();
-    }, [id, courts, selectedDate, dates]);
+    }, [id, courts, selectedDate, dates, clubTimeSlots]);
 
     useEffect(() => {
         if (!selectedTime) {
@@ -196,6 +206,9 @@ export default function ClubDetailScreen() {
     }, [selectedTime, bookingsForDay, courts, selectedDate, dates]);
 
     const handleBookCourt = async (court: Court) => {
+        const selectedTimeSlotObject = clubTimeSlots.find(ts => ts.time === selectedTime);
+        if (!selectedTimeSlotObject) return; // Should not happen if selectedTime is not null
+
         const user = auth.currentUser;
         if (!user) {
             Alert.alert("Niet ingelogd", "Je moet ingelogd zijn om een baan te kunnen boeken.");
@@ -216,7 +229,7 @@ export default function ClubDetailScreen() {
             bookingDate.setHours(hours, minutes, 0, 0);
 
             const startTime = Timestamp.fromDate(bookingDate);
-            const endTime = Timestamp.fromMillis(bookingDate.getTime() + 90 * 60000);
+            const endTime = Timestamp.fromMillis(bookingDate.getTime() + selectedTimeSlotObject.duration * 60000);
 
             const dayStart = new Date(bookingDate);
             dayStart.setHours(0, 0, 0, 0);
@@ -248,7 +261,7 @@ export default function ClubDetailScreen() {
 
             const newBooking: Omit<Booking, 'id'> = {
                 clubId: id!, courtId: court.id, userId: user.uid, startTime, endTime,
-            };
+            }; // Price is not stored in booking, assuming it's derived from timeSlot
             await addDoc(collection(db, 'bookings'), newBooking);
 
             Alert.alert("Boeking succesvol!", `Je hebt ${court.name} geboekt op ${bookingDate.toLocaleDateString('nl-BE')} om ${selectedTime}.`,
@@ -279,6 +292,9 @@ export default function ClubDetailScreen() {
         setSelectedDate(index);
         setSelectedTime(null);
         setExpandedCourtId(null);
+        // Reset displayableTimes to all available times for the new date until filtered
+        // This is handled by the useEffect for fetchAndFilterTimes
+        setBookingsForDay([]); // Clear bookings for the previous day
     };
 
     const handleTimeChange = (time: string) => {
@@ -286,6 +302,19 @@ export default function ClubDetailScreen() {
         setExpandedCourtId(null);
     };
 
+    const currentSelectedTimeSlot = clubTimeSlots.find(ts => ts.time === selectedTime);
+    const currentPrice = currentSelectedTimeSlot ? currentSelectedTimeSlot.price : null;
+    const currentDuration = currentSelectedTimeSlot ? currentSelectedTimeSlot.duration : null;
+    
+    const timesForGrid: (string | null)[] = [...displayableTimes];
+    if (timesForGrid.length > 0) {
+        const remainder = timesForGrid.length % 3;
+        if (remainder !== 0) {
+            for (let i = 0; i < 3 - remainder; i++) {
+                timesForGrid.push(null);
+            }
+        }
+    }
     return (
         <SafeAreaView style={styles.container}>
             <View style={styles.header}>
@@ -293,9 +322,6 @@ export default function ClubDetailScreen() {
                     <Ionicons name="arrow-back" size={28} color="#0e2432" />
                 </TouchableOpacity>
                 <Text style={styles.headerTitle} numberOfLines={1}>{club.name}</Text>
-                <TouchableOpacity style={styles.actionButton} disabled={isBooking}>
-                    <Ionicons name="share-outline" size={24} color="#0e2432" />
-                </TouchableOpacity>
             </View>
             <ScrollView>
                 <ImageBackground source={{ uri: club.imageUrl }} style={styles.heroImage}>
@@ -304,9 +330,6 @@ export default function ClubDetailScreen() {
                 <View style={styles.infoContainer}>
                     <View style={styles.titleContainer}>
                         <Text style={styles.clubTitle}>{club.name}</Text>
-                        <TouchableOpacity>
-                            <Ionicons name="heart-outline" size={28} color="#0e2432" />
-                        </TouchableOpacity>
                     </View>
                     <Text style={styles.clubAddress}>{`${club.address.street}, ${club.address.city}`}</Text>
                 </View>
@@ -336,10 +359,25 @@ export default function ClubDetailScreen() {
                         <ActivityIndicator size="small" color="#007AFF" style={{ height: 50 }} />
                     ) : (
                         <View style={styles.timeSlotsGrid}>
-                            {displayableTimes.length > 0 ? displayableTimes.map((time) => (
-                                <TouchableOpacity key={time} style={[styles.timeSlot, selectedTime === time && styles.selectedTimeSlot]} onPress={() => handleTimeChange(time)}>
-                                    <Text style={[styles.timeSlotText, selectedTime === time && styles.selectedTimeSlotText]}>{time}</Text>
-                                </TouchableOpacity>
+                            {timesForGrid.length > 0 ? timesForGrid.map((time, index) => (
+                                time !== null ? ( // Render actual time slot
+                                    <TouchableOpacity
+                                        key={time}
+                                        style={[
+                                            styles.timeSlot,
+                                            selectedTime === time && styles.selectedTimeSlot,
+                                            (index + 1) % 3 !== 0 && styles.timeSlotMarginRight // Add margin to all but the last item in a row
+                                        ]}
+                                        onPress={() => handleTimeChange(time)}
+                                    >
+                                        <Text style={[styles.timeSlotText, selectedTime === time && styles.selectedTimeSlotText]}>{time}</Text>
+                                    </TouchableOpacity>
+                                ) : ( // Render placeholder
+                                    <View
+                                        key={`placeholder-${index}`}
+                                        style={[styles.timeSlot, (index + 1) % 3 !== 0 && styles.timeSlotMarginRight, { backgroundColor: 'transparent', borderWidth: 0 }]}
+                                    />
+                                )
                             )) : (
                                 <Text style={styles.noSlotsText}>Geen beschikbare tijden voor deze dag.</Text>
                             )}
@@ -362,6 +400,8 @@ export default function ClubDetailScreen() {
                                 }}
                                 onBook={() => handleBookCourt(court)}
                                 isBookable={!!selectedTime}
+                                price={currentPrice}
+                                duration={currentDuration}
                                 isAvailable={isAvailable}
                             />
                         );
@@ -421,9 +461,9 @@ const styles = StyleSheet.create({
     selectedDateText: { color: '#fff' },
     timeSlotSection: { padding: 20, backgroundColor: '#f8f8f8' },
     filterContainer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-    timeSlotsGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
+    timeSlotsGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'flex-start' }, // Changed to flex-start
     timeSlot: {
-        width: '31%',
+        width: '32%', // Adjusted width for 3 items per row with spacing
         backgroundColor: '#fff',
         paddingVertical: 15,
         borderRadius: 10,
@@ -431,6 +471,9 @@ const styles = StyleSheet.create({
         marginBottom: 10,
         borderWidth: 1,
         borderColor: '#eee'
+    },
+    timeSlotMarginRight: {
+        marginRight: '2%', // Margin for spacing between items
     },
     selectedTimeSlot: { backgroundColor: '#0e2432', borderColor: '#0e2432' },
     timeSlotText: { fontSize: 16, fontWeight: '600', color: '#0e2432' },

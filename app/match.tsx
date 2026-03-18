@@ -1,7 +1,7 @@
 import React from "react";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Feather } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import {
 	ScrollView,
 	StatusBar,
@@ -42,12 +42,8 @@ export default function MatchScreen() {
 			<StatusBar barStyle="dark-content" />
 
 			<View style={styles.header}>
-				<TouchableOpacity
-					onPress={() => router.back()}
-					style={styles.backButton}
-					activeOpacity={0.8}
-				>
-					<Feather name="arrow-left" size={20} color="#13202B" />
+				<TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+					<Ionicons name="arrow-back" size={28} color="#0e2432" />
 				</TouchableOpacity>
 				<Text style={styles.headerTitle}>Zoek een match</Text>
 			</View>
@@ -90,23 +86,21 @@ const styles = StyleSheet.create({
 	header: {
 		flexDirection: "row",
 		alignItems: "center",
-		gap: 10,
-		paddingHorizontal: 16,
-		paddingTop: 8,
-		paddingBottom: 12,
+		paddingHorizontal: 20,
+		paddingVertical: 15,
+		justifyContent: "center",
+		position: "relative",
 	},
 	backButton: {
-		width: 36,
-		height: 36,
-		borderRadius: 18,
-		alignItems: "center",
-		justifyContent: "center",
-		backgroundColor: "#EAF0FF",
+		position: "absolute",
+		left: 15,
+		padding: 5,
+		zIndex: 1,
 	},
 	headerTitle: {
-		fontSize: 22,
-		fontWeight: "700",
-		color: "#13202B",
+		fontSize: 20,
+		fontWeight: "bold",
+		color: "#0e2432",
 	},
 	scroll: {
 		flex: 1,

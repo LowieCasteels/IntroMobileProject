@@ -156,8 +156,6 @@ const styles = StyleSheet.create({
         paddingVertical: 15,
         justifyContent: 'center',
         position: 'relative',
-        borderBottomWidth: 1,
-        borderBottomColor: '#eee',
     },
     backButton: {
         position: 'absolute',
