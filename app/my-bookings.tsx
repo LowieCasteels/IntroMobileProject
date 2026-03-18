@@ -3,18 +3,19 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { collection, query, where, getDocs, doc, getDoc, orderBy } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, getDoc, orderBy, deleteDoc } from 'firebase/firestore';
 import { db, auth } from '../firebaseConfig';
 import { Booking, Club, Court } from './types';
 
 interface PopulatedBooking extends Booking {
     clubName: string;
-    courtName: string;
+    court: Court | null;
 }
 
 export default function MyBookingsScreen() {
     const router = useRouter();
     const [bookings, setBookings] = useState<PopulatedBooking[]>([]);
+    const [expandedBookingId, setExpandedBookingId] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -50,12 +51,12 @@ export default function MyBookingsScreen() {
                             const clubName = clubDoc.exists() ? (clubDoc.data() as Club).name : 'Onbekende Club';
 
                             const courtDoc = await getDoc(doc(db, 'clubs', booking.clubId, 'courts', booking.courtId));
-                            const courtName = courtDoc.exists() ? (courtDoc.data() as Court).name : 'Onbekende Baan';
+                            const courtData = courtDoc.exists() ? { id: courtDoc.id, ...courtDoc.data() } as Court : null;
 
                             return {
                                 ...booking,
                                 clubName,
-                                courtName,
+                                court: courtData,
                             };
                         })
                     );
@@ -73,6 +74,33 @@ export default function MyBookingsScreen() {
         }, [])
     );
 
+    const handleCancelBooking = (bookingId: string) => {
+        Alert.alert(
+            "Reservering Annuleren",
+            "Weet je zeker dat je deze reservering wilt annuleren? Dit kan niet ongedaan worden gemaakt.",
+            [
+                {
+                    text: "Nee, behouden",
+                    style: "cancel"
+                },
+                {
+                    text: "Ja, annuleer",
+                    onPress: async () => {
+                        try {
+                            await deleteDoc(doc(db, "bookings", bookingId));
+                            setBookings(prevBookings => prevBookings.filter(b => b.id !== bookingId));
+                            Alert.alert("Succes", "De reservering is geannuleerd.");
+                        } catch (error) {
+                            console.error("Error cancelling booking: ", error);
+                            Alert.alert("Fout", "Het annuleren van de reservering is mislukt.");
+                        }
+                    },
+                    style: "destructive"
+                }
+            ]
+        );
+    };
+
     if (loading) {
         return (
             <SafeAreaView style={styles.container}>
@@ -80,7 +108,7 @@ export default function MyBookingsScreen() {
                     <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
                         <Ionicons name="arrow-back" size={28} color="#0e2432" />
                     </TouchableOpacity>
-                    <Text style={styles.headerTitle}>Mijn boekingen</Text>
+                    <Text style={styles.headerTitle}>Mijn Boekingen</Text>
                 </View>
                 <ActivityIndicator size="large" color="#007AFF" style={styles.loader} />
             </SafeAreaView>
@@ -94,7 +122,7 @@ export default function MyBookingsScreen() {
                     <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
                         <Ionicons name="arrow-back" size={28} color="#0e2432" />
                     </TouchableOpacity>
-                    <Text style={styles.headerTitle}>Mijn boekingen</Text>
+                    <Text style={styles.headerTitle}>Mijn Boekingen</Text>
                 </View>
                 <View style={styles.errorContainer}>
                     <Text style={styles.errorText}>{error}</Text>
@@ -121,9 +149,13 @@ export default function MyBookingsScreen() {
                     </View>
                 ) : (
                     bookings.map((booking) => (
-                        <View key={booking.id} style={styles.bookingCard}>
+                        <TouchableOpacity
+                            key={booking.id}
+                            style={styles.bookingCard}
+                            onPress={() => setExpandedBookingId(prevId => (prevId === booking.id ? null : booking.id))}
+                            activeOpacity={0.7}>
                             <Text style={styles.bookingClubName}>{booking.clubName}</Text>
-                            <Text style={styles.bookingCourtName}>{booking.courtName}</Text>
+                            <Text style={styles.bookingCourtName}>{booking.court?.name || 'Onbekende Baan'}</Text>
                             <Text style={styles.bookingDateTime}>
                                 {booking.startTime.toDate().toLocaleDateString('nl-BE', {
                                     weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
@@ -136,7 +168,26 @@ export default function MyBookingsScreen() {
                                     hour: '2-digit', minute: '2-digit'
                                 })}
                             </Text>
-                        </View>
+                            {expandedBookingId === booking.id && (
+                                <View style={styles.expandedView}>
+                                    <View style={styles.courtDetails}>
+                                        <Text style={styles.detailTitle}>Baandetails</Text>
+                                        <Text style={styles.detailText}>
+                                            Type: <Text style={styles.detailValue}>{booking.court?.type === 'indoor' ? 'Binnen' : 'Buiten'}</Text>
+                                        </Text>
+                                        <Text style={styles.detailText}>
+                                            Ondergrond: <Text style={styles.detailValue}>{booking.court?.surface}</Text>
+                                        </Text>
+                                    </View>
+                                    <TouchableOpacity
+                                        style={[styles.changeButton, styles.cancelButton]}
+                                        activeOpacity={0.8}
+                                        onPress={() => handleCancelBooking(booking.id)}>
+                                        <Text style={styles.changeButtonText}>Annuleer reservering</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            )}
+                        </TouchableOpacity>
                     ))
                 )}
             </ScrollView>
@@ -239,5 +290,44 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: 'gray',
         marginTop: 2,
+    },
+    expandedView: {
+        borderTopWidth: 1,
+        borderTopColor: '#eee',
+        marginTop: 15,
+        paddingTop: 15,
+    },
+    courtDetails: {
+        marginBottom: 15,
+    },
+    detailTitle: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        color: '#0e2432',
+        marginBottom: 8,
+    },
+    detailText: {
+        fontSize: 14,
+        color: 'gray',
+        marginBottom: 4,
+    },
+    detailValue: {
+        color: '#333',
+        fontWeight: '500',
+        textTransform: 'capitalize',
+    },
+    changeButton: {
+        backgroundColor: '#007AFF',
+        borderRadius: 8,
+        paddingVertical: 12,
+        alignItems: 'center',
+    },
+    changeButtonText: {
+        color: '#fff',
+        fontSize: 16,
+        fontWeight: '600',
+    },
+    cancelButton: {
+        backgroundColor: '#FF3B30', // Rood voor annuleren
     },
 });
