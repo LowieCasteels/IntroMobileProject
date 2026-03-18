@@ -8,8 +8,7 @@ import { query, limit } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
 import { Club, ClubTimeSlot } from './types';
 
-// Club Card Component
-const ClubCard = ({ club }: { club: Club }) => { // Removed `availableTimes` prop
+const ClubCard = ({ club }: { club: Club }) => {
   const router = useRouter();
   const [clubTimeSlots, setClubTimeSlots] = useState<ClubTimeSlot[]>([]);
 
@@ -17,7 +16,7 @@ const ClubCard = ({ club }: { club: Club }) => { // Removed `availableTimes` pro
     const fetchClubTimeSlots = async () => {
       try {
         const timeSlotsRef = collection(db, 'clubs', club.id, 'timeSlots');
-        const q = query(timeSlotsRef, limit(6)); // Limit to 6 time slots for display
+        const q = query(timeSlotsRef, limit(6));
         const timeSlotsSnap = await getDocs(q);
         const timeSlotsList = timeSlotsSnap.docs.map(doc => ({
           id: doc.id, ...doc.data()

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TextInput, ScrollView, TouchableOpacity, Alert, Image, KeyboardAvoidingView, Platform, Modal, TouchableWithoutFeedback, Animated, Dimensions } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context'; // Keep SafeAreaView inside KeyboardAvoidingView
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { addDoc, collection, GeoPoint } from 'firebase/firestore';
@@ -155,7 +155,6 @@ export default function AddClubScreen() {
 
       const docRef = await addDoc(collection(db, 'clubs'), newClub);
 
-      // Save dynamic time slots
       for (const slot of timeSlots) {
         const duration = parseInt(slot.duration, 10);
         const price = parseFloat(slot.price);
@@ -169,7 +168,6 @@ export default function AddClubScreen() {
             await addDoc(collection(db, 'clubs', docRef.id, 'timeSlots'), newSlotData);
         }
       }
-      // Automatically add some default courts for testing
       await addDefaultCourts(docRef.id);
 
       Alert.alert('Succes', 'Club succesvol toegevoegd!');

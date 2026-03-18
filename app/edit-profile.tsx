@@ -15,7 +15,6 @@ export default function EditProfileScreen() {
   const [initials, setInitials] = useState('');
   const [profilePic, setProfilePic] = useState<string | undefined>();
 
-  // Form state
   const [fullName, setFullName] = useState('');
   const [gender, setGender] = useState<UserData['gender']>();
   const [birthDate, setBirthDate] = useState<Date | undefined>(undefined);
@@ -29,7 +28,6 @@ export default function EditProfileScreen() {
   const [typePartij, setTypePartij] = useState<UserData['type_partij']>();
   const [favorieteTijd, setFavorieteTijd] = useState<UserData['favoriete_tijd']>();
 
-  // Modal visibility states
   const [showBesteHandSheet, setShowBesteHandSheet] = useState(false);
   const [showBaanpositieSheet, setShowBaanpositieSheet] = useState(false);
   const [showTypePartijSheet, setShowTypePartijSheet] = useState(false);

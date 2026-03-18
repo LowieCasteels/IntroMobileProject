@@ -78,7 +78,6 @@ export default function ClubDetailScreen() {
                 if (clubSnap.exists()) {
                     setClub({ id: clubSnap.id, ...clubSnap.data() } as Club);
 
-                    // Fetch courts subcollection
                     const courtsRef = collection(db, 'clubs', id, 'courts');
                     const courtsSnap = await getDocs(courtsRef);
                     const courtsList = courtsSnap.docs.map(doc => ({
@@ -87,13 +86,12 @@ export default function ClubDetailScreen() {
                     } as Court));
                     setCourts(courtsList);
 
-                    // Fetch timeSlots subcollection
                     const timeSlotsRef = collection(db, 'clubs', id, 'timeSlots');
                     const timeSlotsSnap = await getDocs(timeSlotsRef);
                     const timeSlotsList = timeSlotsSnap.docs.map(doc => ({
                         id: doc.id, ...doc.data()
                     } as ClubTimeSlot));
-                    setClubTimeSlots(timeSlotsList.sort((a, b) => a.time.localeCompare(b.time))); // Sort by time
+                    setClubTimeSlots(timeSlotsList.sort((a, b) => a.time.localeCompare(b.time)));
                 } else {
                     console.log("No such document!");
                 }
@@ -111,7 +109,7 @@ export default function ClubDetailScreen() {
 
     useEffect(() => {
         if (!id || courts.length === 0) {
-            setDisplayableTimes([]); // No time slots available if no club or courts
+            setDisplayableTimes([]);
             return;
         }
     
@@ -183,7 +181,7 @@ export default function ClubDetailScreen() {
         const slotDate = new Date(dates[selectedDate].fullDate);
         slotDate.setHours(hours, minutes, 0, 0);
         const slotStartTime = slotDate.getTime();
-        const slotEndTime = slotStartTime + 90 * 60000; // 90 min booking
+        const slotEndTime = slotStartTime + 90 * 60000;
 
         const availableCourtIds = new Set<string>();
 
@@ -207,7 +205,7 @@ export default function ClubDetailScreen() {
 
     const handleBookCourt = async (court: Court) => {
         const selectedTimeSlotObject = clubTimeSlots.find(ts => ts.time === selectedTime);
-        if (!selectedTimeSlotObject) return; // Should not happen if selectedTime is not null
+        if (!selectedTimeSlotObject) return;
 
         const user = auth.currentUser;
         if (!user) {
@@ -261,7 +259,7 @@ export default function ClubDetailScreen() {
 
             const newBooking: Omit<Booking, 'id'> = {
                 clubId: id!, courtId: court.id, userId: user.uid, startTime, endTime,
-            }; // Price is not stored in booking, assuming it's derived from timeSlot
+            };
             await addDoc(collection(db, 'bookings'), newBooking);
 
             Alert.alert("Boeking succesvol!", `Je hebt ${court.name} geboekt op ${bookingDate.toLocaleDateString('nl-BE')} om ${selectedTime}.`,
@@ -292,9 +290,7 @@ export default function ClubDetailScreen() {
         setSelectedDate(index);
         setSelectedTime(null);
         setExpandedCourtId(null);
-        // Reset displayableTimes to all available times for the new date until filtered
-        // This is handled by the useEffect for fetchAndFilterTimes
-        setBookingsForDay([]); // Clear bookings for the previous day
+        setBookingsForDay([]);
     };
 
     const handleTimeChange = (time: string) => {
@@ -360,19 +356,19 @@ export default function ClubDetailScreen() {
                     ) : (
                         <View style={styles.timeSlotsGrid}>
                             {timesForGrid.length > 0 ? timesForGrid.map((time, index) => (
-                                time !== null ? ( // Render actual time slot
+                                time !== null ? (
                                     <TouchableOpacity
                                         key={time}
                                         style={[
                                             styles.timeSlot,
                                             selectedTime === time && styles.selectedTimeSlot,
-                                            (index + 1) % 3 !== 0 && styles.timeSlotMarginRight // Add margin to all but the last item in a row
+                                            (index + 1) % 3 !== 0 && styles.timeSlotMarginRight
                                         ]}
                                         onPress={() => handleTimeChange(time)}
                                     >
                                         <Text style={[styles.timeSlotText, selectedTime === time && styles.selectedTimeSlotText]}>{time}</Text>
                                     </TouchableOpacity>
-                                ) : ( // Render placeholder
+                                ) : (
                                     <View
                                         key={`placeholder-${index}`}
                                         style={[styles.timeSlot, (index + 1) % 3 !== 0 && styles.timeSlotMarginRight, { backgroundColor: 'transparent', borderWidth: 0 }]}
@@ -461,9 +457,9 @@ const styles = StyleSheet.create({
     selectedDateText: { color: '#fff' },
     timeSlotSection: { padding: 20, backgroundColor: '#f8f8f8' },
     filterContainer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-    timeSlotsGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'flex-start' }, // Changed to flex-start
+    timeSlotsGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'flex-start' },
     timeSlot: {
-        width: '32%', // Adjusted width for 3 items per row with spacing
+        width: '32%',
         backgroundColor: '#fff',
         paddingVertical: 15,
         borderRadius: 10,
@@ -473,7 +469,7 @@ const styles = StyleSheet.create({
         borderColor: '#eee'
     },
     timeSlotMarginRight: {
-        marginRight: '2%', // Margin for spacing between items
+        marginRight: '2%',
     },
     selectedTimeSlot: { backgroundColor: '#0e2432', borderColor: '#0e2432' },
     timeSlotText: { fontSize: 16, fontWeight: '600', color: '#0e2432' },

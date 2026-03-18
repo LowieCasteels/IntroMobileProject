@@ -180,7 +180,7 @@ export default function MyBookingsScreen() {
                                         </Text>
                                     </View>
                                     <TouchableOpacity
-                                        style={[styles.changeButton, styles.cancelButton]}
+                                        style={[styles.changeButton]}
                                         activeOpacity={0.8}
                                         onPress={() => handleCancelBooking(booking.id)}>
                                         <Text style={styles.changeButtonText}>Annuleer reservering</Text>
@@ -317,7 +317,7 @@ const styles = StyleSheet.create({
         textTransform: 'capitalize',
     },
     changeButton: {
-        backgroundColor: '#007AFF',
+        backgroundColor: '#FF3B30',
         borderRadius: 8,
         paddingVertical: 12,
         alignItems: 'center',
@@ -326,8 +326,5 @@ const styles = StyleSheet.create({
         color: '#fff',
         fontSize: 16,
         fontWeight: '600',
-    },
-    cancelButton: {
-        backgroundColor: '#FF3B30', // Rood voor annuleren
     },
 });
