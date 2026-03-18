@@ -54,7 +54,7 @@ export default function LocationsScreen() {
         <View style={styles.section}>
           <View style={styles.sectionHeaderRow}>
             <Text style={styles.sectionTitle}>Aanbevolen clubs voor jou</Text>
-            <Text style={styles.sectionLink}>Bekijk alles</Text>
+            <Text style={styles.sectionLink} onPress={() => router.push('/search')}>Bekijk alles</Text>
           </View>
 
           <View style={styles.recoRow}>

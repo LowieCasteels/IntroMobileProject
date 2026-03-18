@@ -1,5 +1,5 @@
 import React, { useCallback, useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, ImageBackground, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, ImageBackground, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, Feather } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -81,43 +81,48 @@ export default function SearchScreen() {
   }, [searchQuery, clubs]);
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={28} color="#0e2432" />
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      style={styles.container}
+    >
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={28} color="#0e2432" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Zoeken</Text>
+        </View>
+
+        <View style={styles.searchContainer}>
+          <Feather name="search" size={20} color="gray" style={styles.searchIcon} />
+          <TextInput
+            placeholder="Zoek op club, stad, postcode..."
+            style={styles.searchInput}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+        </View>
+
+        {loading ? (
+          <ActivityIndicator size="large" color="#007AFF" style={{ marginTop: 50 }} />
+        ) : (
+          <ScrollView style={styles.resultsScrollView} contentContainerStyle={{ paddingBottom: 20 }}>
+            {filteredClubs.length > 0 ? (
+              filteredClubs.map(club => (
+                <ClubCard key={club.id} club={club} />
+              ))
+            ) : (
+              <Text style={styles.noResultsText}>Geen clubs gevonden.</Text>
+            )}
+          </ScrollView>
+        )}
+
+        {/* Temporary button to add new clubs */}
+        <TouchableOpacity style={styles.fab} onPress={() => router.push('/add-club')}>
+          <Ionicons name="add" size={30} color="#fff" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Zoeken</Text>
-      </View>
-
-      <View style={styles.searchContainer}>
-        <Feather name="search" size={20} color="gray" style={styles.searchIcon} />
-        <TextInput
-          placeholder="Zoek op club, stad, postcode..."
-          style={styles.searchInput}
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-        />
-      </View>
-
-      {loading ? (
-        <ActivityIndicator size="large" color="#007AFF" style={{ marginTop: 50 }} />
-      ) : (
-        <ScrollView style={styles.resultsScrollView} contentContainerStyle={{ paddingBottom: 20 }}>
-          {filteredClubs.length > 0 ? (
-            filteredClubs.map(club => (
-              <ClubCard key={club.id} club={club} />
-            ))
-          ) : (
-            <Text style={styles.noResultsText}>Geen clubs gevonden.</Text>
-          )}
-        </ScrollView>
-      )}
-
-      {/* Temporary button to add new clubs */}
-      <TouchableOpacity style={styles.fab} onPress={() => router.push('/add-club')}>
-        <Ionicons name="add" size={30} color="#fff" />
-      </TouchableOpacity>
-    </SafeAreaView>
+      </SafeAreaView>
+    </KeyboardAvoidingView>
   );
 }
 
