@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, ImageBackground, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, Feather } from '@expo/vector-icons';
@@ -38,6 +38,8 @@ export default function SearchScreen() {
   const router = useRouter();
   const [clubs, setClubs] = useState<Club[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filteredClubs, setFilteredClubs] = useState<Club[]>([]);
 
   useFocusEffect(
     useCallback(() => {
@@ -51,6 +53,7 @@ export default function SearchScreen() {
             ...doc.data()
           } as Club));
           setClubs(clubsList);
+          setFilteredClubs(clubsList);
         } catch (error) {
           console.error("Error fetching clubs: ", error);
         } finally {
@@ -62,9 +65,23 @@ export default function SearchScreen() {
     }, [])
   );
 
+  useEffect(() => {
+    if (searchQuery.trim() === '') {
+      setFilteredClubs(clubs);
+    } else {
+      const lowercasedQuery = searchQuery.toLowerCase();
+      const results = clubs.filter(club => {
+        const nameMatch = club.name.toLowerCase().includes(lowercasedQuery);
+        const cityMatch = club.address.city.toLowerCase().includes(lowercasedQuery);
+        const postalCodeMatch = club.address.postalCode.toLowerCase().includes(lowercasedQuery);
+        return nameMatch || cityMatch || postalCodeMatch;
+      });
+      setFilteredClubs(results);
+    }
+  }, [searchQuery, clubs]);
+
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={28} color="#0e2432" />
@@ -72,39 +89,27 @@ export default function SearchScreen() {
         <Text style={styles.headerTitle}>Zoeken</Text>
       </View>
 
-      {/* Search Bar */}
       <View style={styles.searchContainer}>
         <Feather name="search" size={20} color="gray" style={styles.searchIcon} />
         <TextInput
           placeholder="Zoek op club, stad, postcode..."
           style={styles.searchInput}
+          value={searchQuery}
+          onChangeText={setSearchQuery}
         />
       </View>
 
-      {/* Filters
-      <View style={styles.filterContainer}>
-        <TouchableOpacity style={styles.settingsButton}>
-          <Ionicons name="options-outline" size={24} color="#000" />
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.filterButton}>
-          <Text style={styles.filterText}>Sport: Padel</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.filterButton}>
-          <Text style={styles.filterText}>11 mrt</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.filterButton}>
-          <Text style={styles.filterText}>00:00 - 23:59</Text>
-        </TouchableOpacity>
-      </View> */}
-
-      {/* Results */}
       {loading ? (
         <ActivityIndicator size="large" color="#007AFF" style={{ marginTop: 50 }} />
       ) : (
         <ScrollView style={styles.resultsScrollView} contentContainerStyle={{ paddingBottom: 20 }}>
-          {clubs.map(club => (
-            <ClubCard key={club.id} club={club} />
-          ))}
+          {filteredClubs.length > 0 ? (
+            filteredClubs.map(club => (
+              <ClubCard key={club.id} club={club} />
+            ))
+          ) : (
+            <Text style={styles.noResultsText}>Geen clubs gevonden.</Text>
+          )}
         </ScrollView>
       )}
 
@@ -262,5 +267,11 @@ const styles = StyleSheet.create({
     borderRadius: 28,
     elevation: 8,
     shadowColor: '#000',
+  },
+  noResultsText: {
+    textAlign: 'center',
+    marginTop: 50,
+    fontSize: 16,
+    color: 'gray',
   },
 });
