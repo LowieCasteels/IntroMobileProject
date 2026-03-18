@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, ScrollView, TouchableOpacity, Alert, Image, KeyboardAvoidingView, Platform, Modal, TouchableWithoutFeedback } from 'react-native';
+import { View, Text, StyleSheet, TextInput, ScrollView, TouchableOpacity, Alert, Image, KeyboardAvoidingView, Platform, Modal, TouchableWithoutFeedback, Animated, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context'; // Keep SafeAreaView inside KeyboardAvoidingView
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -26,6 +26,7 @@ export default function AddClubScreen() {
     show: boolean;
     index: number | null;
   }>({ show: false, index: null });
+  const slideAnim = React.useRef(new Animated.Value(Dimensions.get('window').height)).current;
 
   const handleImagePick = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -83,8 +84,7 @@ export default function AddClubScreen() {
 
   const onTimeChange = (event: any, selectedTime?: Date) => {
     const currentIndex = pickerState.index;
-    // Altijd sluiten op Android, of bij 'dismiss'
-    if (Platform.OS === 'android' || event.type === 'dismissed') {
+    if (Platform.OS === 'android') {
       setPickerState({ show: false, index: null });
     }
 
@@ -92,16 +92,30 @@ export default function AddClubScreen() {
       const formattedTime = selectedTime.toLocaleTimeString('nl-BE', {
         hour: '2-digit',
         minute: '2-digit',
-      }).replace('.', ':'); // Zorgt voor HH:MM formaat
+      }).replace('.', ':');
       handleTimeSlotChange(currentIndex, 'time', formattedTime);
-      // Op iOS moeten we de modal handmatig sluiten na selectie
-      if (Platform.OS === 'ios') {
-        setPickerState({ show: false, index: null });
-      }
     }
   };
 
-  const showTimePicker = (index: number) => setPickerState({ show: true, index });
+  const handleClosePicker = () => {
+    Animated.timing(slideAnim, {
+        toValue: Dimensions.get('window').height,
+        duration: 250,
+        useNativeDriver: true,
+    }).start(() => {
+        setPickerState({ show: false, index: null });
+        slideAnim.setValue(Dimensions.get('window').height);
+    });
+  };
+
+  const showTimePicker = (index: number) => {
+    setPickerState({ show: true, index });
+    Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true,
+    }).start();
+  };
 
   const getCurrentTimeForPicker = () => {
     if (pickerState.index !== null) {
@@ -253,23 +267,25 @@ export default function AddClubScreen() {
               ) : (
                 <Modal
                   transparent={true}
-                  animationType="slide"
+                  animationType="fade"
                   visible={pickerState.show}
-                  onRequestClose={() => setPickerState({ show: false, index: null })}
+                  onRequestClose={handleClosePicker}
                 >
-                  <TouchableWithoutFeedback onPress={() => setPickerState({ show: false, index: null })}>
+                  <TouchableWithoutFeedback onPress={handleClosePicker}>
                     <View style={styles.modalOverlay}>
-                      <TouchableWithoutFeedback>
-                        <View style={styles.datePickerIOSContainer}>
-                          <DateTimePicker
-                            value={getCurrentTimeForPicker()}
-                            mode="time"
-                            is24Hour={true}
-                            display="spinner"
-                            onChange={onTimeChange}
-                          />
-                        </View>
-                      </TouchableWithoutFeedback>
+                      <Animated.View style={[styles.datePickerIOSContainer, { transform: [{ translateY: slideAnim }] }]}>
+                        <TouchableWithoutFeedback>
+                          <View>
+                            <DateTimePicker
+                              value={getCurrentTimeForPicker()}
+                              mode="time"
+                              is24Hour={true}
+                              display="spinner"
+                              onChange={onTimeChange}
+                            />
+                          </View>
+                        </TouchableWithoutFeedback>
+                      </Animated.View>
                     </View>
                   </TouchableWithoutFeedback>
                 </Modal>

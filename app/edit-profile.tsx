@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Platform, Image, Modal, TouchableWithoutFeedback, Alert, KeyboardAvoidingView } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Platform, Image, Modal, TouchableWithoutFeedback, Alert, KeyboardAvoidingView, Animated, Dimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { auth, db } from '@/firebaseConfig';
@@ -34,6 +34,28 @@ export default function EditProfileScreen() {
   const [showBaanpositieSheet, setShowBaanpositieSheet] = useState(false);
   const [showTypePartijSheet, setShowTypePartijSheet] = useState(false);
   const [showFavorieteTijdSheet, setShowFavorieteTijdSheet] = useState(false);
+
+  const bottomSheetAnim = React.useRef(new Animated.Value(Dimensions.get('window').height)).current;
+
+  const openSheet = (setter: React.Dispatch<React.SetStateAction<boolean>>) => {
+    setter(true);
+    Animated.timing(bottomSheetAnim, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true,
+    }).start();
+  };
+
+  const closeSheet = (setter: React.Dispatch<React.SetStateAction<boolean>>) => {
+    Animated.timing(bottomSheetAnim, {
+        toValue: Dimensions.get('window').height,
+        duration: 250,
+        useNativeDriver: true,
+    }).start(() => {
+        setter(false);
+        bottomSheetAnim.setValue(Dimensions.get('window').height);
+    });
+  };
   useEffect(() => {
     const fetchUserData = async () => {
       if (auth.currentUser) {
@@ -225,7 +247,7 @@ export default function EditProfileScreen() {
 
         <View style={styles.fieldContainer}>
           <Text style={styles.label}>Geslacht</Text>
-          <TouchableOpacity onPress={() => setIsGenderSheetVisible(true)} style={styles.dateInputContainer}>
+          <TouchableOpacity onPress={() => openSheet(setIsGenderSheetVisible)} style={styles.dateInputContainer}>
             <TextInput
               style={[styles.input, { flex: 1, backgroundColor: 'transparent', paddingRight: 0 }]}
               placeholder="Selecteer geslacht"
@@ -239,7 +261,7 @@ export default function EditProfileScreen() {
 
         <View style={styles.fieldContainer}>
           <Text style={styles.label}>Geboortedatum</Text>
-          <TouchableOpacity onPress={() => setShowDatePicker(true)} style={styles.dateInputContainer}>
+          <TouchableOpacity onPress={() => openSheet(setShowDatePicker)} style={styles.dateInputContainer}>
               <TextInput
                 style={[styles.input, { flex: 1, backgroundColor: 'transparent', paddingRight: 0 }]}
                 placeholder="Geen waarde"
@@ -261,22 +283,24 @@ export default function EditProfileScreen() {
               ) : (
                 <Modal
                   transparent={true}
-                  animationType="slide"
+                  animationType="fade"
                   visible={showDatePicker}
-                  onRequestClose={() => setShowDatePicker(false)}
+                  onRequestClose={() => closeSheet(setShowDatePicker)}
                 >
-                  <TouchableWithoutFeedback onPress={() => setShowDatePicker(false)}>
+                  <TouchableWithoutFeedback onPress={() => closeSheet(setShowDatePicker)}>
                     <View style={styles.modalOverlay}>
-                      <TouchableWithoutFeedback>
-                        <View style={styles.datePickerIOSContainer}>
-                          <DateTimePicker
-                            value={birthDate || new Date()}
-                            mode="date"
-                            display="inline"
-                            onChange={onDateChange}
-                          />
-                        </View>
-                      </TouchableWithoutFeedback>
+                      <Animated.View style={[styles.datePickerIOSContainer, { transform: [{ translateY: bottomSheetAnim }] }]}>
+                        <TouchableWithoutFeedback>
+                          <View>
+                            <DateTimePicker
+                              value={birthDate || new Date()}
+                              mode="date"
+                              display="inline"
+                              onChange={onDateChange}
+                            />
+                          </View>
+                        </TouchableWithoutFeedback>
+                      </Animated.View>
                     </View>
                   </TouchableWithoutFeedback>
                 </Modal>
@@ -305,7 +329,7 @@ export default function EditProfileScreen() {
         {/* Beste Hand */}
         <View style={styles.fieldContainer}>
           <Text style={styles.label}>Beste hand</Text>
-          <TouchableOpacity onPress={() => setShowBesteHandSheet(true)} style={styles.dateInputContainer}>
+          <TouchableOpacity onPress={() => openSheet(setShowBesteHandSheet)} style={styles.dateInputContainer}>
             <TextInput
               style={[styles.input, { flex: 1, backgroundColor: 'transparent', paddingRight: 0 }]}
               placeholder="Selecteer"
@@ -320,7 +344,7 @@ export default function EditProfileScreen() {
         {/* Baanpositie */}
         <View style={styles.fieldContainer}>
           <Text style={styles.label}>Baanpositie</Text>
-          <TouchableOpacity onPress={() => setShowBaanpositieSheet(true)} style={styles.dateInputContainer}>
+          <TouchableOpacity onPress={() => openSheet(setShowBaanpositieSheet)} style={styles.dateInputContainer}>
             <TextInput
               style={[styles.input, { flex: 1, backgroundColor: 'transparent', paddingRight: 0 }]}
               placeholder="Selecteer"
@@ -335,7 +359,7 @@ export default function EditProfileScreen() {
         {/* Type Partij */}
         <View style={styles.fieldContainer}>
           <Text style={styles.label}>Type partij</Text>
-          <TouchableOpacity onPress={() => setShowTypePartijSheet(true)} style={styles.dateInputContainer}>
+          <TouchableOpacity onPress={() => openSheet(setShowTypePartijSheet)} style={styles.dateInputContainer}>
             <TextInput
               style={[styles.input, { flex: 1, backgroundColor: 'transparent', paddingRight: 0 }]}
               placeholder="Selecteer"
@@ -350,7 +374,7 @@ export default function EditProfileScreen() {
         {/* Favoriete Tijd */}
         <View style={styles.fieldContainer}>
           <Text style={styles.label}>Favoriete tijd om te spelen</Text>
-          <TouchableOpacity onPress={() => setShowFavorieteTijdSheet(true)} style={styles.dateInputContainer}>
+          <TouchableOpacity onPress={() => openSheet(setShowFavorieteTijdSheet)} style={styles.dateInputContainer}>
             <TextInput
               style={[styles.input, { flex: 1, backgroundColor: 'transparent', paddingRight: 0 }]}
               placeholder="Selecteer"
@@ -365,161 +389,168 @@ export default function EditProfileScreen() {
       </ScrollView>
 
       <Modal
-        animationType="slide"
+        animationType="fade"
         transparent={true}
         visible={isGenderSheetVisible}
-        onRequestClose={() => setIsGenderSheetVisible(false)}
+        onRequestClose={() => closeSheet(setIsGenderSheetVisible)}
       >
-        <TouchableWithoutFeedback onPress={() => setIsGenderSheetVisible(false)}>
+        <TouchableWithoutFeedback onPress={() => closeSheet(setIsGenderSheetVisible)}>
           <View style={styles.modalOverlay}>
-            <TouchableWithoutFeedback>
-              <View style={styles.bottomSheetContainer}>
-                <View style={styles.dragHandle} />
-                <Text style={styles.bottomSheetTitle}>Kies je geslacht</Text>
-                {['Mannelijk', 'Vrouwelijk', 'Zeg ik liever niet'].map((option) => (
-                  <TouchableOpacity
-                    key={option}
-                    style={styles.optionButton}
-                    onPress={() => {
-                      let valueToSet: UserData['gender'] = 'Zeg ik liever niet';
-                      if (option === 'Mannelijk') {
-                        valueToSet = 'Man';
-                      } else if (option === 'Vrouwelijk') {
-                        valueToSet = 'Vrouw';
-                      }
-                      setGender(valueToSet);
-                      setIsGenderSheetVisible(false);
-                    }}
-                  >
-                    <Text style={styles.optionText}>{option}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </TouchableWithoutFeedback>
+            <Animated.View style={[styles.bottomSheetContainer, { transform: [{ translateY: bottomSheetAnim }] }]}>
+              <TouchableWithoutFeedback>
+                <View>
+                  <View style={styles.dragHandle} />
+                  <Text style={styles.bottomSheetTitle}>Kies je geslacht</Text>
+                  {['Mannelijk', 'Vrouwelijk', 'Zeg ik liever niet'].map((option) => (
+                    <TouchableOpacity
+                      key={option}
+                      style={styles.optionButton}
+                      onPress={() => {
+                        let valueToSet: UserData['gender'] = 'Zeg ik liever niet';
+                        if (option === 'Mannelijk') valueToSet = 'Man';
+                        else if (option === 'Vrouwelijk') valueToSet = 'Vrouw';
+                        setGender(valueToSet);
+                        closeSheet(setIsGenderSheetVisible);
+                      }}
+                    >
+                      <Text style={styles.optionText}>{option}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </TouchableWithoutFeedback>
+            </Animated.View>
           </View>
         </TouchableWithoutFeedback>
       </Modal>
 
       {/* Beste Hand Modal */}
       <Modal
-        animationType="slide"
+        animationType="fade"
         transparent={true}
         visible={showBesteHandSheet}
-        onRequestClose={() => setShowBesteHandSheet(false)}
+        onRequestClose={() => closeSheet(setShowBesteHandSheet)}
       >
-        <TouchableWithoutFeedback onPress={() => setShowBesteHandSheet(false)}>
+        <TouchableWithoutFeedback onPress={() => closeSheet(setShowBesteHandSheet)}>
           <View style={styles.modalOverlay}>
-            <TouchableWithoutFeedback>
-              <View style={styles.bottomSheetContainer}>
-                <View style={styles.dragHandle} />
-                <Text style={styles.bottomSheetTitle}>Kies je beste hand</Text>
-                {['Rechtshandig', 'Linkshandig'].map((option) => (
-                  <TouchableOpacity
-                    key={option}
-                    style={styles.optionButton}
-                    onPress={() => {
-                      setBesteHand(option as UserData['beste_hand']);
-                      setShowBesteHandSheet(false);
-                    }}
-                  >
-                    <Text style={styles.optionText}>{option}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </TouchableWithoutFeedback>
+            <Animated.View style={[styles.bottomSheetContainer, { transform: [{ translateY: bottomSheetAnim }] }]}>
+              <TouchableWithoutFeedback>
+                <View>
+                  <View style={styles.dragHandle} />
+                  <Text style={styles.bottomSheetTitle}>Kies je beste hand</Text>
+                  {['Rechtshandig', 'Linkshandig'].map((option) => (
+                    <TouchableOpacity
+                      key={option}
+                      style={styles.optionButton}
+                      onPress={() => {
+                        setBesteHand(option as UserData['beste_hand']);
+                        closeSheet(setShowBesteHandSheet);
+                      }}
+                    >
+                      <Text style={styles.optionText}>{option}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </TouchableWithoutFeedback>
+            </Animated.View>
           </View>
         </TouchableWithoutFeedback>
       </Modal>
 
       {/* Baanpositie Modal */}
       <Modal
-        animationType="slide"
+        animationType="fade"
         transparent={true}
         visible={showBaanpositieSheet}
-        onRequestClose={() => setShowBaanpositieSheet(false)}
+        onRequestClose={() => closeSheet(setShowBaanpositieSheet)}
       >
-        <TouchableWithoutFeedback onPress={() => setShowBaanpositieSheet(false)}>
+        <TouchableWithoutFeedback onPress={() => closeSheet(setShowBaanpositieSheet)}>
           <View style={styles.modalOverlay}>
-            <TouchableWithoutFeedback>
-              <View style={styles.bottomSheetContainer}>
-                <View style={styles.dragHandle} />
-                <Text style={styles.bottomSheetTitle}>Kies je baanpositie</Text>
-                {['Links', 'Rechts', 'Beide'].map((option) => (
-                  <TouchableOpacity
-                    key={option}
-                    style={styles.optionButton}
-                    onPress={() => {
-                      setBaanpositie(option as UserData['baanpositie']);
-                      setShowBaanpositieSheet(false);
-                    }}
-                  >
-                    <Text style={styles.optionText}>{option}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </TouchableWithoutFeedback>
+            <Animated.View style={[styles.bottomSheetContainer, { transform: [{ translateY: bottomSheetAnim }] }]}>
+              <TouchableWithoutFeedback>
+                <View>
+                  <View style={styles.dragHandle} />
+                  <Text style={styles.bottomSheetTitle}>Kies je baanpositie</Text>
+                  {['Links', 'Rechts', 'Beide'].map((option) => (
+                    <TouchableOpacity
+                      key={option}
+                      style={styles.optionButton}
+                      onPress={() => {
+                        setBaanpositie(option as UserData['baanpositie']);
+                        closeSheet(setShowBaanpositieSheet);
+                      }}
+                    >
+                      <Text style={styles.optionText}>{option}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </TouchableWithoutFeedback>
+            </Animated.View>
           </View>
         </TouchableWithoutFeedback>
       </Modal>
 
       {/* Type Partij Modal */}
       <Modal
-        animationType="slide"
+        animationType="fade"
         transparent={true}
         visible={showTypePartijSheet}
-        onRequestClose={() => setShowTypePartijSheet(false)}
+        onRequestClose={() => closeSheet(setShowTypePartijSheet)}
       >
-        <TouchableWithoutFeedback onPress={() => setShowTypePartijSheet(false)}>
+        <TouchableWithoutFeedback onPress={() => closeSheet(setShowTypePartijSheet)}>
           <View style={styles.modalOverlay}>
-            <TouchableWithoutFeedback>
-              <View style={styles.bottomSheetContainer}>
-                <View style={styles.dragHandle} />
-                <Text style={styles.bottomSheetTitle}>Kies je type partij</Text>
-                {['Enkel', 'Dubbel', 'Competitief'].map((option) => (
-                  <TouchableOpacity
-                    key={option}
-                    style={styles.optionButton}
-                    onPress={() => {
-                      setTypePartij(option as UserData['type_partij']);
-                      setShowTypePartijSheet(false);
-                    }}
-                  >
-                    <Text style={styles.optionText}>{option}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </TouchableWithoutFeedback>
+            <Animated.View style={[styles.bottomSheetContainer, { transform: [{ translateY: bottomSheetAnim }] }]}>
+              <TouchableWithoutFeedback>
+                <View>
+                  <View style={styles.dragHandle} />
+                  <Text style={styles.bottomSheetTitle}>Kies je type partij</Text>
+                  {['Enkel', 'Dubbel', 'Competitief'].map((option) => (
+                    <TouchableOpacity
+                      key={option}
+                      style={styles.optionButton}
+                      onPress={() => {
+                        setTypePartij(option as UserData['type_partij']);
+                        closeSheet(setShowTypePartijSheet);
+                      }}
+                    >
+                      <Text style={styles.optionText}>{option}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </TouchableWithoutFeedback>
+            </Animated.View>
           </View>
         </TouchableWithoutFeedback>
       </Modal>
 
       {/* Favoriete Tijd Modal */}
       <Modal
-        animationType="slide"
+        animationType="fade"
         transparent={true}
         visible={showFavorieteTijdSheet}
-        onRequestClose={() => setShowFavorieteTijdSheet(false)}
+        onRequestClose={() => closeSheet(setShowFavorieteTijdSheet)}
       >
-        <TouchableWithoutFeedback onPress={() => setShowFavorieteTijdSheet(false)}>
+        <TouchableWithoutFeedback onPress={() => closeSheet(setShowFavorieteTijdSheet)}>
           <View style={styles.modalOverlay}>
-            <TouchableWithoutFeedback>
-              <View style={styles.bottomSheetContainer}>
-                <View style={styles.dragHandle} />
-                <Text style={styles.bottomSheetTitle}>Kies je favoriete speeltijd</Text>
-                {['Ochtend', 'Avond', 'Weekend'].map((option) => (
-                  <TouchableOpacity
-                    key={option}
-                    style={styles.optionButton}
-                    onPress={() => {
-                      setFavorieteTijd(option as UserData['favoriete_tijd']);
-                      setShowFavorieteTijdSheet(false);
-                    }}
-                  >
-                    <Text style={styles.optionText}>{option}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </TouchableWithoutFeedback>
+            <Animated.View style={[styles.bottomSheetContainer, { transform: [{ translateY: bottomSheetAnim }] }]}>
+              <TouchableWithoutFeedback>
+                <View>
+                  <View style={styles.dragHandle} />
+                  <Text style={styles.bottomSheetTitle}>Kies je favoriete speeltijd</Text>
+                  {['Ochtend', 'Avond', 'Weekend'].map((option) => (
+                    <TouchableOpacity
+                      key={option}
+                      style={styles.optionButton}
+                      onPress={() => {
+                        setFavorieteTijd(option as UserData['favoriete_tijd']);
+                        closeSheet(setShowFavorieteTijdSheet);
+                      }}
+                    >
+                      <Text style={styles.optionText}>{option}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </TouchableWithoutFeedback>
+            </Animated.View>
           </View>
         </TouchableWithoutFeedback>
       </Modal>

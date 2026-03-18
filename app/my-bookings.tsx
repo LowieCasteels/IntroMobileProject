@@ -4,8 +4,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { collection, query, where, getDocs, doc, getDoc, orderBy } from 'firebase/firestore';
-import { db, auth } from '../../firebaseConfig';
-import { Booking, Club, Court } from '../types';
+import { db, auth } from '../firebaseConfig';
+import { Booking, Club, Court } from './types';
 
 interface PopulatedBooking extends Booking {
     clubName: string;
@@ -80,7 +80,7 @@ export default function MyBookingsScreen() {
                     <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
                         <Ionicons name="arrow-back" size={28} color="#0e2432" />
                     </TouchableOpacity>
-                    <Text style={styles.headerTitle}>Mijn Boekingen</Text>
+                    <Text style={styles.headerTitle}>Mijn boekingen</Text>
                 </View>
                 <ActivityIndicator size="large" color="#007AFF" style={styles.loader} />
             </SafeAreaView>
@@ -94,7 +94,7 @@ export default function MyBookingsScreen() {
                     <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
                         <Ionicons name="arrow-back" size={28} color="#0e2432" />
                     </TouchableOpacity>
-                    <Text style={styles.headerTitle}>Mijn Boekingen</Text>
+                    <Text style={styles.headerTitle}>Mijn boekingen</Text>
                 </View>
                 <View style={styles.errorContainer}>
                     <Text style={styles.errorText}>{error}</Text>
@@ -106,10 +106,10 @@ export default function MyBookingsScreen() {
     return (
         <SafeAreaView style={styles.container}>
             <View style={styles.header}>
-                <TouchableOpacity onPress={() => router.replace('/(tabs)/profile')} style={styles.backButton}>
+                <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
                     <Ionicons name="arrow-back" size={28} color="#0e2432" />
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>Mijn Boekingen</Text>
+                <Text style={styles.headerTitle}>Mijn boekingen</Text>
             </View>
             <ScrollView contentContainerStyle={styles.scrollContent}>
                 {bookings.length === 0 ? (

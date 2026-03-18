@@ -76,7 +76,7 @@ export default function ProfileScreen() {
             <Text style={styles.editProfileButtonText}>Profiel bewerken</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.myBookingsButton} onPress={() => router.push('/(tabs)/my-bookings')}>
+        <TouchableOpacity style={styles.myBookingsButton} onPress={() => router.push('/my-bookings')}>
             <Text style={styles.myBookingsButtonText}>Mijn boekingen</Text>
         </TouchableOpacity>
 
