@@ -34,14 +34,14 @@ export interface Club {
 }
 
 export interface Court {
-    id: string; // Document ID
+    id: string;
     name: string;
     type: "indoor" | "outdoor";
     surface: "kunstgras" | "gravel" | "hardcourt";
 }
 
 export interface Booking {
-    id: string; // Document ID
+    id: string;
     clubId: string;
     courtId: string;
     userId: string;

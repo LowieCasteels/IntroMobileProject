@@ -76,6 +76,10 @@ export default function ProfileScreen() {
             <Text style={styles.editProfileButtonText}>Profiel bewerken</Text>
         </TouchableOpacity>
 
+        <TouchableOpacity style={styles.myBookingsButton} onPress={() => router.push('/(tabs)/my-bookings')}>
+            <Text style={styles.myBookingsButtonText}>Mijn Boekingen</Text>
+        </TouchableOpacity>
+
         <View style={styles.statsSection}>
             <StatItem label="Rating" value={userData?.rating?.toFixed(2)} />
             <StatItem label="Gespeeld" value={userData?.gamesPlayed} />
@@ -86,9 +90,6 @@ export default function ProfileScreen() {
         <View style={styles.preferencesSection}>
           <View style={styles.preferencesHeader}>
               <Text style={styles.preferencesTitle}>Voorkeuren van de speler</Text>
-              {/* <TouchableOpacity onPress={() => router.push('/edit-profile')}>
-                  <Text style={styles.editButton}>Bewerken</Text>
-              </TouchableOpacity> */}
           </View>
           <View style={styles.preferencesContainer}>
             <PreferenceItem label="Beste hand" value={userData?.beste_hand} />
@@ -164,6 +165,20 @@ const styles = StyleSheet.create({
     width: '90%',
   },
   editProfileButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  myBookingsButton: {
+    backgroundColor: '#6c757d',
+    paddingVertical: 15,
+    paddingHorizontal: 30,
+    borderRadius: 15,
+    alignItems: 'center',
+    width: '90%',
+    marginTop: 10,
+  },
+  myBookingsButtonText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',

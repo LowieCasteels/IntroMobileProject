@@ -1,21 +1,21 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ImageBackground, ActivityIndicator, Switch } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ImageBackground, ActivityIndicator, Switch, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, Feather } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { doc, getDoc } from 'firebase/firestore';
-import { db } from '../../firebaseConfig'; // Adjusted import path
-import { Club, Court } from '../types'; // Adjusted import path and added Court
-import { collection, getDocs } from 'firebase/firestore';
+import { doc, getDoc, collection, getDocs, addDoc, query, where, Timestamp } from 'firebase/firestore';
+import { db, auth } from '../../firebaseConfig';
+import { Club, Court, Booking } from '../types';
 
 const getNext7Days = () => {
-    const days = ['ZO', 'MA', 'DI', 'WO', 'DO', 'VR', 'ZA'];
+    const days = ['MA', 'DI', 'WO', 'DO', 'VR', 'ZA', 'ZO'];
     const months = ['Jan', 'Feb', 'Mrt', 'Apr', 'Mei', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dec'];
     let result = [];
     for (let i = 0; i < 7; i++) {
         const d = new Date();
         d.setDate(d.getDate() + i);
         result.push({
+            fullDate: d,
             day: days[d.getDay()],
             date: d.getDate(),
             month: months[d.getMonth()],
@@ -26,20 +26,22 @@ const getNext7Days = () => {
 
 const availableTimes = ['16:00', '16:30', '17:00', '17:30', '18:00', '18:30', '19:00', '19:30', '20:00', '22:30', '23:00'];
 
-const CourtAccordionItem = ({ court, isExpanded, onToggle }: { court: Court, isExpanded: boolean, onToggle: () => void }) => {
+const CourtAccordionItem = ({ court, isExpanded, onToggle, onBook, isBookable, isAvailable }: { court: Court, isExpanded: boolean, onToggle: () => void, onBook: () => void, isBookable: boolean, isAvailable: boolean }) => {
     const features = `${court.type === 'indoor' ? 'Binnen' : 'Buiten'} | Glas | Dubbelspel`;
     return (
-        <View style={styles.courtContainer}>
-            <TouchableOpacity style={styles.courtHeader} onPress={onToggle} activeOpacity={0.7}>
+        <View style={[styles.courtContainer, !isAvailable && styles.disabledCourtContainer]}>
+            <TouchableOpacity style={styles.courtHeader} onPress={onToggle} activeOpacity={0.7} disabled={!isAvailable}>
                 <View>
-                    <Text style={styles.courtTitle}>{court.name}</Text>
-                    <Text style={styles.courtFeatures}>{features}</Text>
+                    <Text style={[styles.courtTitle, !isAvailable && styles.disabledText]}>{court.name}</Text>
+                    <Text style={[styles.courtFeatures, !isAvailable && styles.disabledText]}>{features}</Text>
                 </View>
-                <Ionicons name={isExpanded ? 'chevron-up' : 'chevron-down'} size={24} color="gray" />
+                <Ionicons name={isExpanded ? 'chevron-up' : 'chevron-down'} size={24} color={isAvailable ? "gray" : "#ccc"} />
             </TouchableOpacity>
-            {isExpanded && (
+            {isExpanded && isAvailable && (
                 <View style={styles.courtBody}>
-                    <TouchableOpacity style={styles.bookingCard} activeOpacity={0.8}><Text style={styles.bookingPrice}>€ 42</Text><Text style={styles.bookingDuration}>90 min</Text></TouchableOpacity>
+                    <TouchableOpacity style={[styles.bookingCard, !isBookable && styles.disabledBookingCard]} activeOpacity={0.8} onPress={onBook} disabled={!isBookable || !isAvailable}>
+                        <Text style={styles.bookingPrice}>€ 42</Text><Text style={styles.bookingDuration}>90 min</Text>
+                    </TouchableOpacity>
                 </View>
             )}
         </View>
@@ -56,6 +58,11 @@ export default function ClubDetailScreen() {
     const [showAvailable, setShowAvailable] = useState(false);
     const [courts, setCourts] = useState<Court[]>([]);
     const [expandedCourtId, setExpandedCourtId] = useState<string | null>(null);
+    const [isBooking, setIsBooking] = useState(false);
+    const [displayableTimes, setDisplayableTimes] = useState<string[]>([]);
+    const [loadingTimes, setLoadingTimes] = useState(true);
+    const [bookingsForDay, setBookingsForDay] = useState<Booking[]>([]);
+    const [availableCourts, setAvailableCourts] = useState<Set<string>>(new Set());
 
     useEffect(() => {
         if (!id) return;
@@ -63,7 +70,6 @@ export default function ClubDetailScreen() {
         const fetchClubAndCourts = async () => {
             setLoading(true);
             try {
-                // Fetch club document
                 const clubRef = doc(db, 'clubs', id);
                 const clubSnap = await getDoc(clubRef);
 
@@ -91,6 +97,172 @@ export default function ClubDetailScreen() {
         fetchClubAndCourts();
     }, [id]);
 
+    const dates = useMemo(() => getNext7Days(), []);
+
+    useEffect(() => {
+        if (!id || courts.length === 0) {
+            setDisplayableTimes(availableTimes);
+            return;
+        }
+    
+        const fetchAndFilterTimes = async () => {
+            setLoadingTimes(true);
+            try {
+                const selectedDay = dates[selectedDate].fullDate;
+                const dayStart = new Date(selectedDay);
+                dayStart.setHours(0, 0, 0, 0);
+                const dayEnd = new Date(selectedDay);
+                dayEnd.setHours(23, 59, 59, 999);
+    
+                const bookingsRef = collection(db, 'bookings');
+                const q = query(bookingsRef,
+                    where('clubId', '==', id),
+                    where('startTime', '>=', Timestamp.fromDate(dayStart)),
+                    where('startTime', '<=', Timestamp.fromDate(dayEnd))
+                );
+    
+                const querySnapshot = await getDocs(q);
+                const dailyBookings = querySnapshot.docs.map(doc => doc.data() as Booking);
+                setBookingsForDay(dailyBookings);
+    
+                const bookingsByCourt = new Map<string, Booking[]>();
+                courts.forEach(c => bookingsByCourt.set(c.id, []));
+                dailyBookings.forEach(b => {
+                    if (bookingsByCourt.has(b.courtId)) {
+                        bookingsByCourt.get(b.courtId)!.push(b);
+                    }
+                });
+    
+                const filteredTimes = availableTimes.filter(timeSlot => {
+                    const [hours, minutes] = timeSlot.split(':').map(Number);
+                    const slotDate = new Date(selectedDay);
+                    slotDate.setHours(hours, minutes, 0, 0);
+                    const slotStartTime = slotDate.getTime();
+                    const slotEndTime = slotStartTime + 90 * 60000;
+    
+                    return courts.some(court => {
+                        const courtBookings = bookingsByCourt.get(court.id) || [];
+                        const isOverlapping = courtBookings.some(existingBooking => {
+                            const existingStartTime = existingBooking.startTime.toMillis();
+                            const existingEndTime = existingBooking.endTime.toMillis();
+                            return slotStartTime < existingEndTime && slotEndTime > existingStartTime;
+                        });
+                        return !isOverlapping;
+                    });
+                });
+    
+                setDisplayableTimes(filteredTimes);
+            } catch (error) {
+                console.error("Error filtering time slots: ", error);
+                setDisplayableTimes([]);
+            } finally {
+                setLoadingTimes(false);
+            }
+        };
+    
+        fetchAndFilterTimes();
+    }, [id, courts, selectedDate, dates]);
+
+    useEffect(() => {
+        if (!selectedTime) {
+            setAvailableCourts(new Set(courts.map(c => c.id)));
+            return;
+        }
+
+        const [hours, minutes] = selectedTime.split(':').map(Number);
+        const slotDate = new Date(dates[selectedDate].fullDate);
+        slotDate.setHours(hours, minutes, 0, 0);
+        const slotStartTime = slotDate.getTime();
+        const slotEndTime = slotStartTime + 90 * 60000; // 90 min booking
+
+        const availableCourtIds = new Set<string>();
+
+        courts.forEach(court => {
+            const courtBookings = bookingsForDay.filter(b => b.courtId === court.id);
+
+            const isOverlapping = courtBookings.some(existingBooking => {
+                const existingStartTime = existingBooking.startTime.toMillis();
+                const existingEndTime = existingBooking.endTime.toMillis();
+                return slotStartTime < existingEndTime && slotEndTime > existingStartTime;
+            });
+
+            if (!isOverlapping) {
+                availableCourtIds.add(court.id);
+            }
+        });
+
+        setAvailableCourts(availableCourtIds);
+
+    }, [selectedTime, bookingsForDay, courts, selectedDate, dates]);
+
+    const handleBookCourt = async (court: Court) => {
+        const user = auth.currentUser;
+        if (!user) {
+            Alert.alert("Niet ingelogd", "Je moet ingelogd zijn om een baan te kunnen boeken.");
+            return;
+        }
+
+        if (selectedTime === null) {
+            Alert.alert("Geen tijd geselecteerd", "Selecteer alstublieft een tijdslot.");
+            return;
+        }
+
+        if (isBooking) return;
+        setIsBooking(true);
+
+        try {
+            const [hours, minutes] = selectedTime.split(':').map(Number);
+            const bookingDate = new Date(dates[selectedDate].fullDate);
+            bookingDate.setHours(hours, minutes, 0, 0);
+
+            const startTime = Timestamp.fromDate(bookingDate);
+            const endTime = Timestamp.fromMillis(bookingDate.getTime() + 90 * 60000);
+
+            const dayStart = new Date(bookingDate);
+            dayStart.setHours(0, 0, 0, 0);
+            const dayEnd = new Date(bookingDate);
+            dayEnd.setHours(23, 59, 59, 999);
+
+            const bookingsRef = collection(db, 'bookings');
+            const q = query(bookingsRef,
+                where('courtId', '==', court.id),
+                where('startTime', '>=', Timestamp.fromDate(dayStart)),
+                where('startTime', '<=', Timestamp.fromDate(dayEnd))
+            );
+
+            const querySnapshot = await getDocs(q);
+            const newBookingStartTime = startTime.toMillis();
+            const newBookingEndTime = endTime.toMillis();
+
+            const isOverlapping = querySnapshot.docs.some(doc => {
+                const existingBooking = doc.data() as Booking;
+                const existingStartTime = existingBooking.startTime.toMillis();
+                const existingEndTime = existingBooking.endTime.toMillis();
+                return newBookingStartTime < existingEndTime && newBookingEndTime > existingStartTime;
+            });
+
+            if (isOverlapping) {
+                Alert.alert("Niet beschikbaar", "Dit tijdslot is al geboekt. Kies een andere tijd.");
+                return;
+            }
+
+            const newBooking: Omit<Booking, 'id'> = {
+                clubId: id!, courtId: court.id, userId: user.uid, startTime, endTime,
+            };
+            await addDoc(collection(db, 'bookings'), newBooking);
+
+            Alert.alert("Boeking succesvol!", `Je hebt ${court.name} geboekt op ${bookingDate.toLocaleDateString('nl-BE')} om ${selectedTime}.`,
+                [{ text: "OK", onPress: () => router.back() }]
+            );
+
+        } catch (error) {
+            console.error("Error booking court: ", error);
+            Alert.alert("Fout", "Er is iets misgegaan bij het boeken van de baan.");
+        } finally {
+            setIsBooking(false);
+        }
+    };
+
     if (loading) {
         return <ActivityIndicator size="large" color="#007AFF" style={styles.loader} />;
     }
@@ -103,7 +275,16 @@ export default function ClubDetailScreen() {
         );
     }
 
-    const dates = getNext7Days();
+    const handleDateChange = (index: number) => {
+        setSelectedDate(index);
+        setSelectedTime(null);
+        setExpandedCourtId(null);
+    };
+
+    const handleTimeChange = (time: string) => {
+        setSelectedTime(time);
+        setExpandedCourtId(null);
+    };
 
     return (
         <SafeAreaView style={styles.container}>
@@ -112,7 +293,7 @@ export default function ClubDetailScreen() {
                     <Ionicons name="arrow-back" size={28} color="#0e2432" />
                 </TouchableOpacity>
                 <Text style={styles.headerTitle} numberOfLines={1}>{club.name}</Text>
-                <TouchableOpacity style={styles.actionButton}>
+                <TouchableOpacity style={styles.actionButton} disabled={isBooking}>
                     <Ionicons name="share-outline" size={24} color="#0e2432" />
                 </TouchableOpacity>
             </View>
@@ -139,7 +320,7 @@ export default function ClubDetailScreen() {
 
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.dateCarousel}>
                     {dates.map((date, index) => (
-                        <TouchableOpacity key={index} style={[styles.dateItem, selectedDate === index && styles.selectedDateItem]} onPress={() => setSelectedDate(index)}>
+                        <TouchableOpacity key={index} style={[styles.dateItem, selectedDate === index && styles.selectedDateItem]} onPress={() => handleDateChange(index)}>
                             <Text style={[styles.dateDay, selectedDate === index && styles.selectedDateText]}>{date.day}</Text>
                             <Text style={[styles.dateDate, selectedDate === index && styles.selectedDateText]}>{date.date} {date.month}</Text>
                         </TouchableOpacity>
@@ -151,26 +332,40 @@ export default function ClubDetailScreen() {
                         <Text>Toon alleen beschikbare slots</Text>
                         <Switch value={showAvailable} onValueChange={setShowAvailable} trackColor={{ false: "#767577", true: "#81b0ff" }} thumbColor={showAvailable ? "#007AFF" : "#f4f3f4"} />
                     </View>
-                    <View style={styles.timeSlotsGrid}>
-                        {availableTimes.map((time) => (
-                            <TouchableOpacity key={time} style={[styles.timeSlot, selectedTime === time && styles.selectedTimeSlot]} onPress={() => setSelectedTime(time)}>
-                                <Text style={[styles.timeSlotText, selectedTime === time && styles.selectedTimeSlotText]}>{time}</Text>
-                            </TouchableOpacity>
-                        ))}
-                    </View>
+                    {loadingTimes ? (
+                        <ActivityIndicator size="small" color="#007AFF" style={{ height: 50 }} />
+                    ) : (
+                        <View style={styles.timeSlotsGrid}>
+                            {displayableTimes.length > 0 ? displayableTimes.map((time) => (
+                                <TouchableOpacity key={time} style={[styles.timeSlot, selectedTime === time && styles.selectedTimeSlot]} onPress={() => handleTimeChange(time)}>
+                                    <Text style={[styles.timeSlotText, selectedTime === time && styles.selectedTimeSlotText]}>{time}</Text>
+                                </TouchableOpacity>
+                            )) : (
+                                <Text style={styles.noSlotsText}>Geen beschikbare tijden voor deze dag.</Text>
+                            )}
+                        </View>
+                    )}
                 </View>
 
                 <View style={styles.courtsSection}>
-                    {courts.map((court) => (
-                        <CourtAccordionItem
-                            key={court.id}
-                            court={court}
-                            isExpanded={expandedCourtId === court.id}
-                            onToggle={() => {
-                                setExpandedCourtId(prevId => (prevId === court.id ? null : court.id));
-                            }}
-                        />
-                    ))}
+                    {courts.map((court) => {
+                        const isAvailable = availableCourts.has(court.id);
+                        return (
+                            <CourtAccordionItem
+                                key={court.id}
+                                court={court}
+                                isExpanded={expandedCourtId === court.id}
+                                onToggle={() => {
+                                    if (isAvailable) {
+                                        setExpandedCourtId(prevId => (prevId === court.id ? null : court.id));
+                                    }
+                                }}
+                                onBook={() => handleBookCourt(court)}
+                                isBookable={!!selectedTime}
+                                isAvailable={isAvailable}
+                            />
+                        );
+                    })}
                 </View>
 
             </ScrollView>
@@ -286,5 +481,20 @@ const styles = StyleSheet.create({
         color: '#fff',
         fontSize: 14,
         marginTop: 4,
+    },
+    disabledBookingCard: {
+        backgroundColor: '#a9a9a9',
+    },
+    noSlotsText: {
+        width: '100%',
+        textAlign: 'center',
+        color: 'gray',
+    },
+    disabledCourtContainer: {
+        backgroundColor: '#f9f9f9',
+        opacity: 0.7,
+    },
+    disabledText: {
+        color: '#b0b0b0',
     },
 });

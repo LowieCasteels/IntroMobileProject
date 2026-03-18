@@ -30,6 +30,13 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => <FontAwesome5 name="user-alt" size={24} color={color} />,
         }}
       />
+      <Tabs.Screen
+        // This screen is not shown in the tab bar
+        name="my-bookings"
+        options={{
+          href: null,
+        }}
+      />
     </Tabs>
   );
 }
