@@ -1,22 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:go_router/go_router.dart';
 
-class RegisterScreen extends StatefulWidget {
-  const RegisterScreen({super.key});
+class LoginScreen extends StatefulWidget {
+  const LoginScreen({super.key});
 
   @override
-  State<RegisterScreen> createState() => _RegisterScreenState();
+  State<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _RegisterScreenState extends State<RegisterScreen> {
-  final _nameController = TextEditingController();
+class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _cityController = TextEditingController();
+  bool _isLoading = false;
 
-  // Helper voor de styling van de labels (zoals in je RN code)
+  // Helper voor Label Styling (zoals styles.inputLabel in RN)
   Widget _buildLabel(String text) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8, top: 16),
@@ -31,7 +29,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
-  // Helper voor de TextInput styling
+  // Helper voor TextField Styling (zoals styles.input in RN)
   Widget _buildTextField(
     TextEditingController controller,
     String hint, {
@@ -39,16 +37,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: const Color(
-          0xFFF5F5F5,
-        ), // De lichtgrijze achtergrond uit je RN styles
+        color: const Color(0xFFF5F5F5),
         borderRadius: BorderRadius.circular(12),
       ),
       child: TextField(
         controller: controller,
         obscureText: obscure,
+        style: const TextStyle(fontSize: 16),
         decoration: InputDecoration(
           hintText: hint,
+          hintStyle: const TextStyle(color: Color(0xFF999999)),
           border: InputBorder.none,
           contentPadding: const EdgeInsets.all(16),
         ),
@@ -56,29 +54,34 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
-  Future<void> _handleRegister() async {
-    try {
-      UserCredential userCredential = await FirebaseAuth.instance
-          .createUserWithEmailAndPassword(
-            email: _emailController.text.trim(),
-            password: _passwordController.text.trim(),
-          );
-
-      await FirebaseFirestore.instance
-          .collection('flutterUsers')
-          .doc(userCredential.user!.uid)
-          .set({
-            'name': _nameController.text.trim(),
-            'city': _cityController.text.trim(),
-            'email': _emailController.text.trim().toLowerCase(),
-            'createdAt': FieldValue.serverTimestamp(),
-          });
-
-      if (mounted) context.go('/');
-    } catch (e) {
+  Future<void> _handleLogin() async {
+    if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(e.toString())));
+      ).showSnackBar(const SnackBar(content: Text("Vul alle velden in")));
+      return;
+    }
+
+    setState(() => _isLoading = true);
+    try {
+      await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
+      );
+      if (mounted) context.go('/');
+    } on FirebaseAuthException catch (e) {
+      String message = "Er is een fout opgetreden";
+      if (e.code == 'user-not-found')
+        message = "Geen gebruiker gevonden met dit emailadres.";
+      if (e.code == 'wrong-password') message = "Onjuist wachtwoord.";
+
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(message)));
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -87,13 +90,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
+        // Gebruik SingleChildScrollView zodat het toetsenbord je content niet blokkeert
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24.0),
+          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 40.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              const SizedBox(height: 40),
+              // Header (styles.header in RN)
               const Text(
-                "Welkom bij Peerby",
+                "Welkom terug",
                 style: TextStyle(
                   fontSize: 32,
                   fontWeight: FontWeight.bold,
@@ -101,29 +107,24 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ),
               ),
               const SizedBox(height: 8),
+              // Subheader (styles.subHeader in RN)
               const Text(
-                "Maak een account aan om te delen",
+                "Log in om verder te gaan",
                 style: TextStyle(fontSize: 16, color: Color(0xFF666666)),
               ),
               const SizedBox(height: 32),
 
-              _buildLabel("Volledige naam"),
-              _buildTextField(_nameController, "Naam"),
-
-              _buildLabel("Woonplaats"),
-              _buildTextField(_cityController, "Bijv. Antwerpen"),
-
               _buildLabel("Email"),
-              _buildTextField(_emailController, "Email"),
+              _buildTextField(_emailController, "Email", obscure: false),
 
               _buildLabel("Wachtwoord"),
               _buildTextField(_passwordController, "Wachtwoord", obscure: true),
 
               const SizedBox(height: 32),
 
-              // De primaire blauwe knop
+              // Login Button (styles.button in RN)
               ElevatedButton(
-                onPressed: _handleRegister,
+                onPressed: _isLoading ? null : _handleLogin,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF2DBA8D),
                   minimumSize: const Size(double.infinity, 56),
@@ -132,30 +133,32 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ),
                   elevation: 0,
                 ),
-                child: const Text(
-                  "Registreer",
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
+                child: _isLoading
+                    ? const CircularProgressIndicator(color: Colors.white)
+                    : const Text(
+                        "Log in",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
               ),
 
               const SizedBox(height: 12),
 
-              // De outline knop
+              // Outline Button (styles.outlineButton in RN)
               OutlinedButton(
-                onPressed: () => context.go('/login'),
+                onPressed: () => context.go('/register'),
                 style: OutlinedButton.styleFrom(
                   minimumSize: const Size(double.infinity, 56),
-                  side: const BorderSide(color: Color(0xFF2DBA8D)),
+                  side: const BorderSide(color: Color(0xFF2DBA8D), width: 1),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
                 child: const Text(
-                  "Ik heb al een account",
+                  "Account aanmaken",
                   style: TextStyle(
                     color: Color(0xFF2DBA8D),
                     fontSize: 16,

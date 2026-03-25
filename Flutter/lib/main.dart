@@ -1,5 +1,8 @@
+import 'package:device_preview/device_preview.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter_project/auth/login_screen.dart';
 import 'package:go_router/go_router.dart';
 import 'firebase_options.dart';
 // import 'auth/login_screen.dart';
@@ -8,13 +11,17 @@ import 'auth/register_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  // DevicePreview(
+  //   enabled: !kReleaseMode,
+  //   builder: (context) => MyApp(), // Wrap your app
+  // );
   runApp(const MyApp());
 }
 
 final GoRouter _router = GoRouter(
   initialLocation: '/register',
   routes: [
-    // GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
+    GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
     GoRoute(
       path: '/register',
       builder: (context, state) => const RegisterScreen(),
