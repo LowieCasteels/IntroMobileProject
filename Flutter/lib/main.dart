@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_project/auth/login_screen.dart';
+import 'package:flutter_project/screens/navbar.dart';
 import 'package:go_router/go_router.dart';
 import 'firebase_options.dart';
 // import 'auth/login_screen.dart';
@@ -15,7 +16,14 @@ void main() async {
   //   enabled: !kReleaseMode,
   //   builder: (context) => MyApp(), // Wrap your app
   // );
-  runApp(const MyApp());
+  // runApp(const MyApp());
+  runApp(
+    DevicePreview(
+      builder: (context) {
+        return const MyApp();
+      },
+    ),
+  );
 }
 
 final GoRouter _router = GoRouter(
@@ -26,7 +34,7 @@ final GoRouter _router = GoRouter(
       path: '/register',
       builder: (context, state) => const RegisterScreen(),
     ),
-    GoRoute(path: '/', builder: (context, state) => Scaffold()),
+    GoRoute(path: '/', builder: (context, state) => const navbar()),
   ],
 );
 
@@ -36,6 +44,8 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp.router(
+      locale: DevicePreview.locale(context),
+      builder: DevicePreview.appBuilder,
       title: 'DeelApp',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
