@@ -5,7 +5,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { addDoc, collection, GeoPoint } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
-import { Court, ClubTimeSlot } from './types';
+import { Court, ClubTimeSlot } from '../../types';
 import * as ImagePicker from 'expo-image-picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
 

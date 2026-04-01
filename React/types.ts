@@ -55,3 +55,20 @@ export interface ClubTimeSlot {
     duration: number;
     price: number;
 }
+
+export interface Match {
+    id: string;
+    clubId: string;
+    clubName: string;
+    date: Timestamp;
+    levelMin: number;
+    levelMax: number;
+    mixed: boolean;
+    competitive: boolean;
+    players: string[];
+    maxPlayers: 4;
+    pricePerPlayer: number;
+    paid: string[];
+    status: "open" | "full" | "finished";
+    score?: [number, number][];
+}

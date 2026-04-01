@@ -28,26 +28,10 @@ import {
   updateDoc,
   doc,
 } from "firebase/firestore";
-import { auth, db } from "../firebaseConfig";
+import { auth, db } from '../firebaseConfig';
+import { Match } from '../types';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
-
-type Match = {
-  id: string;
-  clubId: string;
-  clubName: string;
-  date: Date;
-  levelMin: number;
-  levelMax: number;
-  mixed: boolean;
-  competitive: boolean;
-  players: string[];
-  maxPlayers: 4;
-  pricePerPlayer: number;
-  paid: string[];
-  status: "open" | "full" | "finished";
-  score?: [number, number][];
-};
 
 type ClubOption = {
   id: string;
@@ -65,7 +49,7 @@ function matchFromFirestore(id: string, data: any): Match {
     id,
     clubId: data.clubId ?? "",
     clubName: data.clubName ?? "",
-    date: (data.date as Timestamp).toDate(),
+    date: data.date as Timestamp,
     levelMin: data.levelMin,
     levelMax: data.levelMax,
     mixed: data.mixed,
@@ -83,7 +67,8 @@ function matchFromFirestore(id: string, data: any): Match {
 
 function formatDate(d: Date) {
   const now = new Date();
-  const diffH = (d.getTime() - now.getTime()) / 3600000;
+  if (!(d instanceof Date) || isNaN(d.getTime())) return "Ongeldige datum";
+  const diffH = (d.getTime() - now.getTime()) / 3600000; 
   const timeStr = d.toLocaleTimeString("nl-BE", { hour: "2-digit", minute: "2-digit" });
   if (diffH > 0 && diffH < 20) return `Vandaag, ${timeStr}`;
   if (diffH >= 20 && diffH < 44) return `Morgen, ${timeStr}`;
@@ -225,20 +210,25 @@ function MatchCard({
   currentUserId,
   onJoin,
   onPay,
+  onChat,
   onEnterScore,
 }: {
   match: Match;
   currentUserId: string;
   onJoin: () => void;
   onPay: () => void;
+  onChat: () => void;
   onEnterScore: () => void;
 }) {
   const colors = levelColor(match.levelMin);
   const spotsLeft = match.maxPlayers - match.players.length;
   const isMember = match.players.includes(currentUserId);
-  const hasPaid = match.paid.includes(currentUserId);
-  const isPast = match.date < new Date();
+  const hasPaid = match.paid.includes(currentUserId); 
+  const matchDate = match.date.toDate();
+  const isPast = matchDate < new Date();
   const isFinished = match.status === "finished";
+  const isCreator = match.players[0] === currentUserId;
+  const canChat = isMember && (isCreator || hasPaid);
 
   return (
     <View style={styles.card}>
@@ -249,7 +239,7 @@ function MatchCard({
         </View>
       </View>
 
-      <Text style={styles.cardSubtitle}>{formatDate(match.date)}</Text>
+      <Text style={styles.cardSubtitle}>{formatDate(matchDate)}</Text>
 
       <View style={styles.tagRow}>
         {match.mixed && <Tag label="Gemengd" icon="people" />}
@@ -290,6 +280,12 @@ function MatchCard({
               <Ionicons name="checkmark-circle" size={14} color="#2E5D00" />
               <Text style={styles.paidText}>Betaald</Text>
             </View>
+          )}
+          {canChat && !isPast && !isFinished && (
+            <TouchableOpacity style={styles.chatButton} onPress={onChat}>
+              <Ionicons name="chatbubbles-outline"q size={14} color="#fff" />
+              <Text style={styles.joinButtonText}>Chat</Text>
+            </TouchableOpacity>
           )}
           {isMember && isPast && match.status !== "finished" && (
             <TouchableOpacity style={styles.scoreButton} onPress={onEnterScore}>
@@ -355,8 +351,9 @@ function CreateMatchModal({
     setSaving(true);
     await onCreate({
       clubId,
+      
       clubName: selectedClub.name,
-      date,
+      date: Timestamp.fromDate(date),
       levelMin,
       levelMax,
       mixed,
@@ -630,7 +627,7 @@ export default function MatchScreen() {
     try {
       await addDoc(collection(db, "matches"), {
         ...data,
-        date: Timestamp.fromDate(data.date),
+        date: Timestamp.fromDate(data.date.toDate()),
         players: [currentUserId],
         paid: [],
         status: "open",
@@ -723,8 +720,8 @@ export default function MatchScreen() {
             <>
               <SectionHeader title="Beschikbaar" count={open.length} />
               {open.map((m) => (
-                <MatchCard key={m.id} match={m} currentUserId={currentUserId}
-                  onJoin={() => handleJoin(m)} onPay={() => handlePay(m)}
+                <MatchCard key={m.id} match={m} currentUserId={currentUserId} onChat={() => router.push(`/match-chat/${m.id}`)}
+                  onJoin={() => handleJoin(m)} onPay={() => handlePay(m)} 
                   onEnterScore={() => setScoreTargetId(m.id)} />
               ))}
             </>
@@ -734,8 +731,8 @@ export default function MatchScreen() {
             <>
               <SectionHeader title="Vol" count={full.length} />
               {full.map((m) => (
-                <MatchCard key={m.id} match={m} currentUserId={currentUserId}
-                  onJoin={() => {}} onPay={() => handlePay(m)}
+                <MatchCard key={m.id} match={m} currentUserId={currentUserId} onChat={() => router.push(`/match-chat/${m.id}`)}
+                  onJoin={() => {}} onPay={() => handlePay(m)} 
                   onEnterScore={() => setScoreTargetId(m.id)} />
               ))}
             </>
@@ -745,7 +742,7 @@ export default function MatchScreen() {
             <>
               <SectionHeader title="Afgelopen" count={finished.length} />
               {finished.map((m) => (
-                <MatchCard key={m.id} match={m} currentUserId={currentUserId}
+                <MatchCard key={m.id} match={m} currentUserId={currentUserId} onChat={() => {}}
                   onJoin={() => {}} onPay={() => {}} onEnterScore={() => {}} />
               ))}
             </>
@@ -831,6 +828,10 @@ const styles = StyleSheet.create({
   },
   payButton: {
     alignSelf: "flex-start", backgroundColor: "#2E7D32", borderRadius: 10,
+    paddingHorizontal: 14, paddingVertical: 8, flexDirection: "row", gap: 6, alignItems: "center",
+  },
+  chatButton: {
+    alignSelf: "flex-start", backgroundColor: "#007AFF", borderRadius: 10,
     paddingHorizontal: 14, paddingVertical: 8, flexDirection: "row", gap: 6, alignItems: "center",
   },
   scoreButton: {

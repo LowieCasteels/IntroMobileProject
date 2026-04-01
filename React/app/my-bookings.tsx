@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { collection, query, where, getDocs, doc, getDoc, orderBy, deleteDoc } from 'firebase/firestore';
 import { db, auth } from '../firebaseConfig';
-import { Booking, Club, Court } from './types';
+import { Booking, Club, Court } from '../../types';
 
 interface PopulatedBooking extends Booking {
     clubName: string;

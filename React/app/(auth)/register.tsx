@@ -14,7 +14,7 @@ import {
 import { auth, db } from "../../firebaseConfig";
 import { createUserWithEmailAndPassword, deleteUser } from "firebase/auth";
 import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
-import { UserData } from '../types';
+import { UserData } from '../../types';
 
 export default function RegisterScreen() {
     const router = useRouter()

@@ -6,7 +6,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { collection, getDocs } from 'firebase/firestore';
 import { query, limit } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
-import { Club, ClubTimeSlot } from './types';
+import { Club, ClubTimeSlot } from '../types';
 
 const ClubCard = ({ club }: { club: Club }) => {
   const router = useRouter();

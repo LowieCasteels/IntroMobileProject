@@ -4,7 +4,7 @@ import { View, StyleSheet, Text, TouchableOpacity, Alert, Image } from 'react-na
 import { auth, db } from '@/firebaseConfig';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { doc, getDoc } from 'firebase/firestore';
-import { UserData } from '../types';
+import { UserData } from '../../types';
 
 const PreferenceItem = ({ label, value }: { label: string, value: string | undefined | null }) => (
   <View style={styles.preferenceItem}>
@@ -74,10 +74,6 @@ export default function ProfileScreen() {
 
         <TouchableOpacity style={styles.editProfileButton} onPress={() => router.push('/edit-profile')}>
             <Text style={styles.editProfileButtonText}>Profiel bewerken</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.myBookingsButton} onPress={() => router.push('/my-bookings')}>
-            <Text style={styles.myBookingsButtonText}>Mijn boekingen</Text>
         </TouchableOpacity>
 
         <View style={styles.statsSection}>
@@ -165,20 +161,6 @@ const styles = StyleSheet.create({
     width: '90%',
   },
   editProfileButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  myBookingsButton: {
-    backgroundColor: '#6c757d',
-    paddingVertical: 15,
-    paddingHorizontal: 30,
-    borderRadius: 15,
-    alignItems: 'center',
-    width: '90%',
-    marginTop: 10,
-  },
-  myBookingsButtonText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',

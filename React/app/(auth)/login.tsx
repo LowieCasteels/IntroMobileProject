@@ -61,7 +61,7 @@ export default function LoginScreen() {
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.outlineButton} onPress={() => router.replace('/register')}>
-            <Text style={styles.outlineButtonText}>Account</Text>
+            <Text style={styles.outlineButtonText}>Maak een account</Text>
             </TouchableOpacity>
         </View>
         </KeyboardAvoidingView>

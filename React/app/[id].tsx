@@ -1,11 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ImageBackground, ActivityIndicator, Switch, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons, Feather } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { doc, getDoc, collection, getDocs, addDoc, query, where, Timestamp } from 'firebase/firestore';
-import { db, auth } from '../../firebaseConfig';
-import { Club, Court, Booking, ClubTimeSlot } from '../../types';
+import { doc, getDoc, collection, getDocs, addDoc, query, where, Timestamp, updateDoc } from 'firebase/firestore';
+import { db, auth } from '../firebaseConfig';
+import { Club, Court, Booking, ClubTimeSlot } from '../types';
 
 const getNext7Days = () => {
     const days = ['MA', 'DI', 'WO', 'DO', 'VR', 'ZA', 'ZO'];
@@ -49,17 +49,17 @@ const CourtAccordionItem = ({ court, isExpanded, onToggle, onBook, isBookable, i
     );
 };
 
-export default function ClubDetailScreen() {
+export default function RescheduleScreen() {
     const router = useRouter();
-    const { id } = useLocalSearchParams<{ id: string }>();
+    const { id: bookingId } = useLocalSearchParams<{ id: string }>();
+    const [originalBooking, setOriginalBooking] = useState<Booking | null>(null);
     const [club, setClub] = useState<Club | null>(null);
     const [loading, setLoading] = useState(true);
     const [selectedDate, setSelectedDate] = useState(0);
     const [selectedTime, setSelectedTime] = useState<string | null>(null);
-    const [showAvailable, setShowAvailable] = useState(false);
     const [courts, setCourts] = useState<Court[]>([]);
     const [expandedCourtId, setExpandedCourtId] = useState<string | null>(null);
-    const [isBooking, setIsBooking] = useState(false);
+    const [isRescheduling, setIsRescheduling] = useState(false);
     const [displayableTimes, setDisplayableTimes] = useState<string[]>([]);
     const [loadingTimes, setLoadingTimes] = useState(true);
     const [clubTimeSlots, setClubTimeSlots] = useState<ClubTimeSlot[]>([]);
@@ -67,48 +67,59 @@ export default function ClubDetailScreen() {
     const [availableCourts, setAvailableCourts] = useState<Set<string>>(new Set());
 
     useEffect(() => {
-        if (!id) return;
+        if (!bookingId) return;
 
-        const fetchClubAndCourts = async () => {
+        const fetchBookingAndClubData = async () => {
             setLoading(true);
             try {
-                const clubRef = doc(db, 'clubs', id);
+                const bookingRef = doc(db, 'bookings', bookingId);
+                const bookingSnap = await getDoc(bookingRef);
+
+                if (!bookingSnap.exists()) {
+                    Alert.alert("Fout", "Boeking niet gevonden.");
+                    setLoading(false);
+                    router.back();
+                    return;
+                }
+                const bookingData = { id: bookingSnap.id, ...bookingSnap.data() } as Booking;
+                setOriginalBooking(bookingData);
+
+                const clubId = bookingData.clubId;
+                const clubRef = doc(db, 'clubs', clubId);
                 const clubSnap = await getDoc(clubRef);
 
                 if (clubSnap.exists()) {
                     setClub({ id: clubSnap.id, ...clubSnap.data() } as Club);
 
-                    const courtsRef = collection(db, 'clubs', id, 'courts');
+                    const courtsRef = collection(db, 'clubs', clubId, 'courts');
                     const courtsSnap = await getDocs(courtsRef);
-                    const courtsList = courtsSnap.docs.map(doc => ({
-                        id: doc.id,
-                        ...doc.data()
-                    } as Court));
+                    const courtsList = courtsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Court));
                     setCourts(courtsList);
 
-                    const timeSlotsRef = collection(db, 'clubs', id, 'timeSlots');
+                    const timeSlotsRef = collection(db, 'clubs', clubId, 'timeSlots');
                     const timeSlotsSnap = await getDocs(timeSlotsRef);
-                    const timeSlotsList = timeSlotsSnap.docs.map(doc => ({
-                        id: doc.id, ...doc.data()
-                    } as ClubTimeSlot));
+                    const timeSlotsList = timeSlotsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as ClubTimeSlot));
                     setClubTimeSlots(timeSlotsList.sort((a, b) => a.time.localeCompare(b.time)));
                 } else {
-                    console.log("No such document!");
+                    Alert.alert("Fout", "Club niet gevonden.");
+                    router.back();
                 }
             } catch (error) {
-                console.error("Error fetching club details: ", error);
+                console.error("Error fetching data for reschedule: ", error);
+                Alert.alert("Fout", "Kon de benodigde gegevens niet laden.");
+                router.back();
             } finally {
                 setLoading(false);
             }
         };
 
-        fetchClubAndCourts();
-    }, [id]);
+        fetchBookingAndClubData();
+    }, [bookingId]);
 
     const dates = useMemo(() => getNext7Days(), []);
 
     useEffect(() => {
-        if (!id || courts.length === 0) {
+        if (!club || courts.length === 0) {
             setDisplayableTimes([]);
             return;
         }
@@ -124,19 +135,19 @@ export default function ClubDetailScreen() {
     
                 const bookingsRef = collection(db, 'bookings');
                 const q = query(bookingsRef,
-                    where('clubId', '==', id),
+                    where('clubId', '==', club.id),
                     where('startTime', '>=', Timestamp.fromDate(dayStart)),
                     where('startTime', '<=', Timestamp.fromDate(dayEnd))
                 );
     
                 const querySnapshot = await getDocs(q);
-                const dailyBookings = querySnapshot.docs.map(doc => doc.data() as Booking);
+                const dailyBookings = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Booking));
                 setBookingsForDay(dailyBookings);
     
                 const bookingsByCourt = new Map<string, Booking[]>();
                 courts.forEach(c => bookingsByCourt.set(c.id, []));
                 dailyBookings.forEach(b => {
-                    if (bookingsByCourt.has(b.courtId)) {
+                    if (b.id !== bookingId && bookingsByCourt.has(b.courtId)) {
                         bookingsByCourt.get(b.courtId)!.push(b);
                     }
                 });
@@ -169,7 +180,7 @@ export default function ClubDetailScreen() {
         };
     
         fetchAndFilterTimes();
-    }, [id, courts, selectedDate, dates, clubTimeSlots]);
+    }, [club, courts, selectedDate, dates, clubTimeSlots, bookingId]);
 
     useEffect(() => {
         if (!selectedTime) {
@@ -186,7 +197,7 @@ export default function ClubDetailScreen() {
         const availableCourtIds = new Set<string>();
 
         courts.forEach(court => {
-            const courtBookings = bookingsForDay.filter(b => b.courtId === court.id);
+            const courtBookings = bookingsForDay.filter(b => b.courtId === court.id && b.id !== bookingId);
 
             const isOverlapping = courtBookings.some(existingBooking => {
                 const existingStartTime = existingBooking.startTime.toMillis();
@@ -201,34 +212,24 @@ export default function ClubDetailScreen() {
 
         setAvailableCourts(availableCourtIds);
 
-    }, [selectedTime, bookingsForDay, courts, selectedDate, dates]);
+    }, [selectedTime, bookingsForDay, courts, selectedDate, dates, bookingId]);
 
-    const handleBookCourt = async (court: Court) => {
+    const handleReschedule = async (court: Court) => {
         const selectedTimeSlotObject = clubTimeSlots.find(ts => ts.time === selectedTime);
-        if (!selectedTimeSlotObject) return;
+        if (!selectedTimeSlotObject || !bookingId) return;
 
-        const user = auth.currentUser;
-        if (!user) {
-            Alert.alert("Niet ingelogd", "Je moet ingelogd zijn om een baan te kunnen boeken.");
-            return;
-        }
-
-        if (selectedTime === null) {
-            Alert.alert("Geen tijd geselecteerd", "Selecteer alstublieft een tijdslot.");
-            return;
-        }
-
-        if (isBooking) return;
-        setIsBooking(true);
+        if (isRescheduling) return;
+        setIsRescheduling(true);
 
         try {
-            const [hours, minutes] = selectedTime.split(':').map(Number);
+            const [hours, minutes] = selectedTime!.split(':').map(Number);
             const bookingDate = new Date(dates[selectedDate].fullDate);
             bookingDate.setHours(hours, minutes, 0, 0);
 
-            const startTime = Timestamp.fromDate(bookingDate);
-            const endTime = Timestamp.fromMillis(bookingDate.getTime() + selectedTimeSlotObject.duration * 60000);
+            const newStartTime = Timestamp.fromDate(bookingDate);
+            const newEndTime = Timestamp.fromMillis(bookingDate.getTime() + selectedTimeSlotObject.duration * 60000);
 
+            // Final check for overlap, excluding the booking itself
             const dayStart = new Date(bookingDate);
             dayStart.setHours(0, 0, 0, 0);
             const dayEnd = new Date(bookingDate);
@@ -242,46 +243,48 @@ export default function ClubDetailScreen() {
             );
 
             const querySnapshot = await getDocs(q);
-            const newBookingStartTime = startTime.toMillis();
-            const newBookingEndTime = endTime.toMillis();
+            const newBookingStartTime = newStartTime.toMillis();
+            const newBookingEndTime = newEndTime.toMillis();
 
-            const isOverlapping = querySnapshot.docs.some(doc => {
-                const existingBooking = doc.data() as Booking;
-                const existingStartTime = existingBooking.startTime.toMillis();
-                const existingEndTime = existingBooking.endTime.toMillis();
-                return newBookingStartTime < existingEndTime && newBookingEndTime > existingStartTime;
-            });
+            const isOverlapping = querySnapshot.docs
+                .filter(doc => doc.id !== bookingId) // Exclude the current booking
+                .some(doc => {
+                    const existingBooking = doc.data() as Booking;
+                    const existingStartTime = existingBooking.startTime.toMillis();
+                    const existingEndTime = existingBooking.endTime.toMillis();
+                    return newBookingStartTime < existingEndTime && newBookingEndTime > existingStartTime;
+                });
 
             if (isOverlapping) {
                 Alert.alert("Niet beschikbaar", "Dit tijdslot is al geboekt. Kies een andere tijd.");
+                setIsRescheduling(false);
                 return;
             }
 
-            const newBooking: Omit<Booking, 'id'> = {
-                clubId: id!, courtId: court.id, userId: user.uid, startTime, endTime,
-            };
-            await addDoc(collection(db, 'bookings'), newBooking);
+            const bookingRef = doc(db, 'bookings', bookingId);
+            await updateDoc(bookingRef, {
+                startTime: newStartTime,
+                endTime: newEndTime,
+                courtId: court.id,
+            });
 
-            Alert.alert("Boeking succesvol!", `Je hebt ${court.name} geboekt op ${bookingDate.toLocaleDateString('nl-BE')} om ${selectedTime}.`,
+            Alert.alert("Wijziging succesvol!", `Je boeking is verplaatst naar ${bookingDate.toLocaleDateString('nl-BE')} om ${selectedTime}.`,
                 [{ text: "OK", onPress: () => router.back() }]
             );
 
         } catch (error) {
-            console.error("Error booking court: ", error);
-            Alert.alert("Fout", "Er is iets misgegaan bij het boeken van de baan.");
+            console.error("Error rescheduling booking: ", error);
+            Alert.alert("Fout", "Er is iets misgegaan bij het wijzigen van de boeking.");
         } finally {
-            setIsBooking(false);
+            setIsRescheduling(false);
         }
     };
 
-    if (loading) {
-        return <ActivityIndicator size="large" color="#007AFF" style={styles.loader} />;
-    }
-
-    if (!club) {
+    if (loading || !club) {
         return (
             <SafeAreaView style={styles.container}>
-                <Text>Club niet gevonden.</Text>
+                <View style={styles.header}><Text style={styles.headerTitle}>Reservering Wijzigen</Text></View>
+                <ActivityIndicator size="large" color="#007AFF" style={styles.loader} />
             </SafeAreaView>
         );
     }
@@ -317,25 +320,16 @@ export default function ClubDetailScreen() {
                 <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
                     <Ionicons name="arrow-back" size={28} color="#0e2432" />
                 </TouchableOpacity>
-                <Text style={styles.headerTitle} numberOfLines={1}>{club.name}</Text>
+                <Text style={styles.headerTitle} numberOfLines={1}>Wijzig Reservering</Text>
             </View>
             <ScrollView>
                 <ImageBackground source={{ uri: club.imageUrl }} style={styles.heroImage}>
                 </ImageBackground>
 
                 <View style={styles.infoContainer}>
-                    <View style={styles.titleContainer}>
-                        <Text style={styles.clubTitle}>{club.name}</Text>
-                    </View>
-                    <Text style={styles.clubAddress}>{`${club.address.street}, ${club.address.city}`}</Text>
+                    <Text style={styles.clubTitle}>{club.name}</Text>
+                    <Text style={styles.clubAddress}>Kies een nieuwe tijd of baan voor je boeking.</Text>
                 </View>
-
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabContainer}>
-                    <TouchableOpacity style={[styles.tab, styles.activeTab]}><Text style={[styles.tabText, styles.activeTabText]}>Reserveren</Text></TouchableOpacity>
-                    <TouchableOpacity style={styles.tab}><Text style={styles.tabText}>Home</Text></TouchableOpacity>
-                    <TouchableOpacity style={styles.tab}><Text style={styles.tabText}>Open Matches</Text></TouchableOpacity>
-                    <TouchableOpacity style={styles.tab}><Text style={styles.tabText}>Competitie</Text></TouchableOpacity>
-                </ScrollView>
 
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.dateCarousel}>
                     {dates.map((date, index) => (
@@ -347,10 +341,6 @@ export default function ClubDetailScreen() {
                 </ScrollView>
 
                 <View style={styles.timeSlotSection}>
-                    <View style={styles.filterContainer}>
-                        <Text>Toon alleen beschikbare slots</Text>
-                        <Switch value={showAvailable} onValueChange={setShowAvailable} trackColor={{ false: "#767577", true: "#81b0ff" }} thumbColor={showAvailable ? "#007AFF" : "#f4f3f4"} />
-                    </View>
                     {loadingTimes ? (
                         <ActivityIndicator size="small" color="#007AFF" style={{ height: 50 }} />
                     ) : (
@@ -359,20 +349,13 @@ export default function ClubDetailScreen() {
                                 time !== null ? (
                                     <TouchableOpacity
                                         key={time}
-                                        style={[
-                                            styles.timeSlot,
-                                            selectedTime === time && styles.selectedTimeSlot,
-                                            (index + 1) % 3 !== 0 && styles.timeSlotMarginRight
-                                        ]}
+                                        style={[styles.timeSlot, selectedTime === time && styles.selectedTimeSlot, (index + 1) % 3 !== 0 && styles.timeSlotMarginRight]}
                                         onPress={() => handleTimeChange(time)}
                                     >
                                         <Text style={[styles.timeSlotText, selectedTime === time && styles.selectedTimeSlotText]}>{time}</Text>
                                     </TouchableOpacity>
                                 ) : (
-                                    <View
-                                        key={`placeholder-${index}`}
-                                        style={[styles.timeSlot, (index + 1) % 3 !== 0 && styles.timeSlotMarginRight, { backgroundColor: 'transparent', borderWidth: 0 }]}
-                                    />
+                                    <View key={`placeholder-${index}`} style={[styles.timeSlot, (index + 1) % 3 !== 0 && styles.timeSlotMarginRight, { backgroundColor: 'transparent', borderWidth: 0 }]} />
                                 )
                             )) : (
                                 <Text style={styles.noSlotsText}>Geen beschikbare tijden voor deze dag.</Text>
@@ -394,7 +377,7 @@ export default function ClubDetailScreen() {
                                         setExpandedCourtId(prevId => (prevId === court.id ? null : court.id));
                                     }
                                 }}
-                                onBook={() => handleBookCourt(court)}
+                                onBook={() => handleReschedule(court)}
                                 isBookable={!!selectedTime}
                                 price={currentPrice}
                                 duration={currentDuration}
@@ -433,22 +416,11 @@ const styles = StyleSheet.create({
         color: '#0e2432',
         marginHorizontal: 50,
     },
-    actionButton: {
-        position: 'absolute',
-        right: 15,
-        padding: 5,
-    },
     loader: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-    heroImage: { width: '100%', height: 250 },
+    heroImage: { width: '100%', height: 180 },
     infoContainer: { padding: 20, borderBottomWidth: 1, borderBottomColor: '#eee' },
-    titleContainer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 },
-    clubTitle: { fontSize: 24, fontWeight: 'bold', color: '#0e2432' },
+    clubTitle: { fontSize: 24, fontWeight: 'bold', color: '#0e2432', marginBottom: 5 },
     clubAddress: { fontSize: 16, color: 'gray' },
-    tabContainer: { flexDirection: 'row', paddingHorizontal: 20, paddingVertical: 15, borderBottomWidth: 1, borderBottomColor: '#eee' },
-    tab: { paddingHorizontal: 15, paddingVertical: 8, marginRight: 10, borderRadius: 20, backgroundColor: '#f0f0f0' },
-    activeTab: { backgroundColor: '#e8f0fe' },
-    tabText: { fontSize: 14, fontWeight: '600', color: '#0e2432' },
-    activeTabText: { color: '#007AFF' },
     dateCarousel: { paddingHorizontal: 20, paddingVertical: 15 },
     dateItem: { alignItems: 'center', backgroundColor: '#f0f0f0', borderRadius: 10, padding: 15, marginRight: 10, minWidth: 80 },
     selectedDateItem: { backgroundColor: '#0e2432' },
@@ -456,7 +428,6 @@ const styles = StyleSheet.create({
     dateDate: { fontSize: 14, color: 'gray' },
     selectedDateText: { color: '#fff' },
     timeSlotSection: { padding: 20, backgroundColor: '#f8f8f8' },
-    filterContainer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
     timeSlotsGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'flex-start' },
     timeSlot: {
         width: '32%',
