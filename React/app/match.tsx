@@ -21,6 +21,8 @@ import {
   arrayUnion,
   collection,
   getDocs,
+  getDoc,
+  increment,
   onSnapshot,
   orderBy,
   query,
@@ -59,7 +61,9 @@ function matchFromFirestore(id: string, data: any): Match {
     pricePerPlayer: data.pricePerPlayer,
     paid: data.paid ?? [],
     status: data.status,
-    score: data.score ?? undefined,
+    score: data.score 
+      ? data.score.map((s: { t1: number; t2: number }) => [s.t1, s.t2] as [number, number])
+      : undefined,
   };
 }
 
@@ -68,7 +72,7 @@ function matchFromFirestore(id: string, data: any): Match {
 function formatDate(d: Date) {
   const now = new Date();
   if (!(d instanceof Date) || isNaN(d.getTime())) return "Ongeldige datum";
-  const diffH = (d.getTime() - now.getTime()) / 3600000; 
+  const diffH = (d.getTime() - now.getTime()) / 3600000;
   const timeStr = d.toLocaleTimeString("nl-BE", { hour: "2-digit", minute: "2-digit" });
   if (diffH > 0 && diffH < 20) return `Vandaag, ${timeStr}`;
   if (diffH >= 20 && diffH < 44) return `Morgen, ${timeStr}`;
@@ -223,7 +227,7 @@ function MatchCard({
   const colors = levelColor(match.levelMin);
   const spotsLeft = match.maxPlayers - match.players.length;
   const isMember = match.players.includes(currentUserId);
-  const hasPaid = match.paid.includes(currentUserId); 
+  const hasPaid = match.paid.includes(currentUserId);
   const matchDate = match.date.toDate();
   const isPast = matchDate < new Date();
   const isFinished = match.status === "finished";
@@ -351,7 +355,7 @@ function CreateMatchModal({
     setSaving(true);
     await onCreate({
       clubId,
-      
+
       clubName: selectedClub.name,
       date: Timestamp.fromDate(date),
       levelMin,
@@ -503,6 +507,10 @@ function ScoreModal({
 }) {
   const [sets, setSets] = useState<[string, string][]>([["", ""]]);
 
+  useEffect(() => {
+    if (visible) setSets([["", ""]]);
+  }, [visible]);
+
   function updateSet(i: number, team: 0 | 1, val: string) {
     const next = [...sets] as [string, string][];
     next[i][team] = val.replace(/[^0-9]/g, "");
@@ -510,6 +518,11 @@ function ScoreModal({
   }
 
   function handleSave() {
+    const filledSets = sets.filter(([a, b]) => a !== "" || b !== "");
+    if(filledSets.length === 0){
+      Alert.alert("Ongeldig", "Vul minstens één set in.");
+      return;
+    }
     const parsed: [number, number][] = sets.map(([a, b]) => [parseInt(a) || 0, parseInt(b) || 0]);
     if (matchWinner(parsed) === 0) {
       Alert.alert("Ongeldig", "Er is nog geen winnaar. Controleer de regels: een set is gewonnen met 6 punten en 2 verschil (bijv. 6-4 of 7-5).");
@@ -671,13 +684,66 @@ export default function MatchScreen() {
   }
 
   async function handleSaveScore(matchId: string, sets: [number, number][]) {
-    try {
-      await updateDoc(doc(db, "matches", matchId), { score: sets, status: "finished" });
-      const winner = matchWinner(sets);
-      Alert.alert("Wedstrijd afgelopen!", `Team ${winner} heeft gewonnen 🏆\nNiveaus worden aangepast.`);
-    } catch {
-      Alert.alert("Fout", "Score kon niet worden opgeslagen.");
-    }
+   try {
+    const scoreToSave = sets.map(([t1, t2]) => ({ t1, t2 }));
+    await updateDoc(doc(db, "matches", matchId), { score: scoreToSave, status: "finished" });
+
+    const winner = matchWinner(sets);
+    Alert.alert("Wedstrijd afgelopen!", `Team ${winner} heeft gewonnen 🏆`);
+
+    // Ratings aanpassen enkel bij competitieve wedstrijd
+    const match = matches.find((m) => m.id === matchId);
+    if (!match || !match.competitive || match.players.length < 4) return;
+
+    // Team 1 = spelers index 0 en 1, Team 2 = spelers index 2 en 3
+    const team1 = match.players.slice(0, 2);
+    const team2 = match.players.slice(2, 4);
+    const winnerTeam = winner === 1 ? team1 : team2;
+    const loserTeam = winner === 1 ? team2 : team1;
+
+    // Haal ratings op van alle 4 spelers
+    const allPlayerIds = [...team1, ...team2];
+    const playerDocs = await Promise.all(
+      allPlayerIds.map((uid) => getDoc(doc(db, "users", uid)))
+    );
+    const ratings: Record<string, number> = {};
+    playerDocs.forEach((d) => {
+      if (d.exists()) ratings[d.id] = (d.data() as any).rating ?? 1.5;
+    });
+
+    const avgWinner = winnerTeam.reduce((s, id) => s + (ratings[id] ?? 1.5), 0) / 2;
+    const avgLoser = loserTeam.reduce((s, id) => s + (ratings[id] ?? 1.5), 0) / 2;
+
+    // Elo-geïnspireerd algoritme:
+    // Upset (zwakkere wint) = grotere bonus, sterkere wint = kleinere bonus
+    const diff = avgLoser - avgWinner; // positief = underdog wint
+    const gain = Math.min(0.5, Math.max(0.1, 0.3 + diff * 0.1));
+    const loss = Math.min(0.5, Math.max(0.1, 0.3 - diff * 0.1));
+
+    // Update ratings — afronden op 0.5 stappen (zoals echte padel ratings)
+    const round = (n: number) => Math.round(n * 2) / 2;
+
+    await Promise.all([
+      ...winnerTeam.map((uid) =>
+        updateDoc(doc(db, "users", uid), {
+          rating: Math.min(7, round((ratings[uid] ?? 1.5) + gain)),
+          wins: increment(1),
+          gamesPlayed: increment(1),
+        })
+      ),
+      ...loserTeam.map((uid) =>
+        updateDoc(doc(db, "users", uid), {
+          rating: Math.max(1.5, round((ratings[uid] ?? 1.5) - loss)),
+          losses: increment(1),
+          gamesPlayed: increment(1),
+        })
+      ),
+    ]);
+
+  } catch (e) {
+    console.error("Score save error:", e);
+    Alert.alert("Fout", "Score kon niet worden opgeslagen.");
+  }
   }
 
   // ─── Render ─────────────────────────────────────────────────────────────────
@@ -721,7 +787,7 @@ export default function MatchScreen() {
               <SectionHeader title="Beschikbaar" count={open.length} />
               {open.map((m) => (
                 <MatchCard key={m.id} match={m} currentUserId={currentUserId} onChat={() => router.push(`/match-chat/${m.id}`)}
-                  onJoin={() => handleJoin(m)} onPay={() => handlePay(m)} 
+                  onJoin={() => handleJoin(m)} onPay={() => handlePay(m)}
                   onEnterScore={() => setScoreTargetId(m.id)} />
               ))}
             </>
@@ -732,7 +798,7 @@ export default function MatchScreen() {
               <SectionHeader title="Vol" count={full.length} />
               {full.map((m) => (
                 <MatchCard key={m.id} match={m} currentUserId={currentUserId} onChat={() => router.push(`/match-chat/${m.id}`)}
-                  onJoin={() => {}} onPay={() => handlePay(m)} 
+                  onJoin={() => {}} onPay={() => handlePay(m)}
                   onEnterScore={() => setScoreTargetId(m.id)} />
               ))}
             </>
