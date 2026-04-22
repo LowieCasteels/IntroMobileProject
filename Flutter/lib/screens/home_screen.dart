@@ -37,9 +37,9 @@ class ItemListing {
 final List<ItemListing> _mockListings = [
   ItemListing(
     id: '1',
-    title: '2021 Tesla Model 3 Long Range',
+    title: 'Tesla',
     imageUrl: 'https://images.unsplash.com/photo-1560958089-b8a1929cea89?w=800',
-    price: 34900,
+    price: 2000,
     type: ListingType.sale,
     seller: const UserProfile(
       name: 'Alex Martens',
@@ -106,7 +106,7 @@ class _HomeScreenState extends State<HomeScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: const [
                 Text(
-                  'Peerby',
+                  'Appelby',
                   style: TextStyle(
                     color: Color(0xFF2DBA8D),
                     fontSize: 18,
@@ -236,10 +236,8 @@ class _CarCard extends StatelessWidget {
                     left: 12,
                     child: _Badge(
                       label: isRent ? 'Te Koop' : 'Te Huur',
-                      icon: isRent ? Icons.key : Icons.sell,
+                      icon: isRent ? Icons.sell : Icons.real_estate_agent,
                       color: const Color(0xFF2ECC71),
-                      // ? const Color(0xFF2ECC71)
-                      // : const Color(0xFF2ECC71),
                     ),
                   ),
                 ],
