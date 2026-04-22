@@ -1,66 +1,53 @@
-import 'dart:ui_web';
-
+import 'dart:convert'; // For base64Decode
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 // ── Data models ───────────────────────────────────────────────────────────────
 
-enum ListingType { sale, rent }
-
-class UserProfile {
-  final String name;
-  final String avatarUrl;
-  const UserProfile({required this.name, required this.avatarUrl});
-}
-
-class ItemListing {
+class Appliance {
   final String id;
+  final String ownerId;
   final String title;
-  final String imageUrl;
+  final String description;
+  final String category;
   final double price;
-  final ListingType type;
-  final UserProfile seller;
-  final String location;
+  final String transactionType; // 'huur' or 'leen'
+  final String base64Image;
+  final bool isVisible;
+  final Timestamp createdAt;
 
-  const ItemListing({
+  Appliance({
     required this.id,
+    required this.ownerId,
     required this.title,
-    required this.imageUrl,
+    required this.description,
+    required this.category,
     required this.price,
-    required this.type,
-    required this.seller,
-    required this.location,
+    required this.transactionType,
+    required this.base64Image,
+    required this.isVisible,
+    required this.createdAt,
   });
+
+  factory Appliance.fromFirestore(DocumentSnapshot doc) {
+    Map data = doc.data() as Map<String, dynamic>;
+    return Appliance(
+      id: doc.id,
+      ownerId: data['ownerId'] ?? '',
+      title: data['title'] ?? 'Geen titel',
+      description: data['description'] ?? 'Geen beschrijving',
+      category: data['category'] ?? 'Overig',
+      price: (data['price'] ?? 0.0).toDouble(),
+      transactionType: data['transactionType'] ?? 'leen',
+      base64Image: data['base64Image'] ?? '',
+      isVisible: data['isVisible'] ?? false,
+      createdAt: data['createdAt'] ?? Timestamp.now(),
+    );
+  }
 }
 
 // ── Placeholder data (replace with your real DB fetch) ───────────────────────
-
-final List<ItemListing> _mockListings = [
-  ItemListing(
-    id: '1',
-    title: '2021 Tesla Model 3 Long Range',
-    imageUrl: 'https://images.unsplash.com/photo-1560958089-b8a1929cea89?w=800',
-    price: 34900,
-    type: ListingType.sale,
-    seller: const UserProfile(
-      name: 'Alex Martens',
-      avatarUrl: 'https://i.pravatar.cc/150?img=11',
-    ),
-    location: 'Antwerp, BE',
-  ),
-  ItemListing(
-    id: '2',
-    title: "Blender voor lekkere smoothies",
-    imageUrl:
-        'https://images.unsplash.com/photo-1570222094114-d054a817e56b?w=800',
-    price: 20,
-    type: ListingType.rent,
-    seller: const UserProfile(
-      name: "Behlul",
-      avatarUrl: 'https://i.pravatar.cc/150?img=11',
-    ),
-    location: 'Antwerp, BE',
-  ),
-];
+// Removed mock data
 
 //HomeScreen
 
@@ -72,19 +59,22 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  // TODO: replace _mockListings with your database stream/future
-  final List<ItemListing> _listings = _mockListings;
-  ListingType? _activeFilter;
-
-  List<ItemListing> get _filtered => _activeFilter == null
-      ? _listings
-      : _listings.where((l) => l.type == _activeFilter).toList();
+  // Stream to fetch appliances from Firestore
+  final Stream<List<Appliance>> _appliancesStream = FirebaseFirestore.instance
+      .collection('appliances')
+      .where('isVisible', isEqualTo: true) // Only show visible items
+      .orderBy('createdAt', descending: true) // Show newest first
+      .snapshots()
+      .map(
+        (snapshot) =>
+            snapshot.docs.map((doc) => Appliance.fromFirestore(doc)).toList(),
+      );
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F7),
-      body: CustomScrollView(slivers: [_buildAppBar(), _buildListings()]),
+      body: CustomScrollView(slivers: [_buildAppBar(), _buildApplianceList()]),
     );
   }
 
@@ -129,66 +119,91 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
+
   //Listings
+  Widget _buildApplianceList() {
+    return StreamBuilder<List<Appliance>>(
+      stream: _appliancesStream,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const SliverFillRemaining(
+            child: Center(child: CircularProgressIndicator()),
+          );
+        }
 
-  Widget _buildListings() {
-    final items = _filtered;
+        if (snapshot.hasError) {
+          return SliverFillRemaining(
+            child: Center(child: Text('Error: ${snapshot.error}')),
+          );
+        }
 
-    if (items.isEmpty) {
-      return SliverFillRemaining(
-        child: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.directions_car_outlined,
-                size: 64,
-                color: Colors.grey[300],
+        final appliances = snapshot.data ?? [];
+
+        if (appliances.isEmpty) {
+          return SliverFillRemaining(
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.devices_other, // Changed icon to be more generic
+                    size: 64,
+                    color: Colors.grey[300],
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Nog geen toestellen aangeboden',
+                    style: TextStyle(
+                      color: Colors.grey[500],
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Wees de eerste om er een toe te voegen!',
+                    style: TextStyle(color: Colors.grey[400], fontSize: 14),
+                  ),
+                ],
               ),
-              const SizedBox(height: 16),
-              Text(
-                'No listings yet',
-                style: TextStyle(
-                  color: Colors.grey[500],
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                ),
+            ),
+          );
+        }
+
+        return SliverPadding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
+          sliver: SliverList(
+            delegate: SliverChildBuilderDelegate(
+              (context, index) => Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: _ApplianceCard(appliance: appliances[index]),
               ),
-              const SizedBox(height: 6),
-              Text(
-                'Be the first to add one!',
-                style: TextStyle(color: Colors.grey[400], fontSize: 14),
-              ),
-            ],
+              childCount: appliances.length,
+            ),
           ),
-        ),
-      );
-    }
-
-    return SliverPadding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
-      sliver: SliverList(
-        delegate: SliverChildBuilderDelegate(
-          (context, index) => Padding(
-            padding: const EdgeInsets.only(bottom: 16),
-            child: _CarCard(listing: items[index]),
-          ),
-          childCount: items.length,
-        ),
-      ),
+        );
+      },
     );
   }
 }
 
-//Car card
+//Appliance card
 
-class _CarCard extends StatelessWidget {
-  final ItemListing listing;
-  const _CarCard({required this.listing});
+class _ApplianceCard extends StatelessWidget {
+  final Appliance appliance;
+  const _ApplianceCard({required this.appliance});
+
+  // Helper to fetch user details
+  Future<DocumentSnapshot> _fetchOwnerDetails(String ownerId) {
+    return FirebaseFirestore.instance
+        .collection('flutterUsers')
+        .doc(ownerId)
+        .get();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final isRent = listing.type == ListingType.rent;
+    final isForRent = appliance.transactionType == 'huur';
 
     return GestureDetector(
       onTap: () {
@@ -200,9 +215,9 @@ class _CarCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.07),
+              color: Colors.black.withOpacity(0.05),
               blurRadius: 16,
-              offset: const Offset(0, 6),
+              offset: const Offset(0, 4),
             ),
           ],
         ),
@@ -210,42 +225,38 @@ class _CarCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Image + badges
-            ClipRRect(
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(20),
-              ),
-              child: Stack(
-                children: [
-                  Image.network(
-                    listing.imageUrl,
-                    height: 200,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Container(
-                      height: 200,
-                      color: const Color(0xFFEEEEEE),
-                      child: const Icon(
-                        Icons.directions_car,
-                        size: 60,
-                        color: Color(0xFFCCCCCC),
-                      ),
-                    ),
+            Stack(
+              children: [
+                ClipRRect(
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(20),
                   ),
-                  Positioned(
-                    top: 12,
-                    left: 12,
-                    child: _Badge(
-                      label: isRent ? 'Te Koop' : 'Te Huur',
-                      icon: isRent ? Icons.key : Icons.sell,
-                      color: const Color(0xFF2ECC71),
-                      // ? const Color(0xFF2ECC71)
-                      // : const Color(0xFF2ECC71),
-                    ),
+                  child: appliance.base64Image.isNotEmpty
+                      ? Image.memory(
+                          base64Decode(appliance.base64Image),
+                          height: 200,
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) =>
+                              _buildImagePlaceholder(),
+                        )
+                      : _buildImagePlaceholder(),
+                ),
+                Positioned(
+                  top: 12,
+                  left: 12,
+                  child: _Badge(
+                    label: isForRent ? 'Te huur' : 'Te leen',
+                    icon: isForRent ? Icons.payments : Icons.handshake,
+                    color: isForRent
+                        ? const Color(0xFF2ECC71)
+                        : const Color(
+                            0xFF3498DB,
+                          ), // Different colors for rent/loan
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-
             // Details
             Padding(
               padding: const EdgeInsets.all(16),
@@ -258,7 +269,7 @@ class _CarCard extends StatelessWidget {
                     children: [
                       Expanded(
                         child: Text(
-                          listing.title,
+                          appliance.title,
                           style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w700,
@@ -272,16 +283,16 @@ class _CarCard extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
                           Text(
-                            '€${_fmt(listing.price)}',
+                            isForRent ? '€${_fmt(appliance.price)}' : 'Gratis',
                             style: const TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.w900,
                               color: Color(0xFF1A1A2E),
                             ),
                           ),
-                          if (isRent)
+                          if (isForRent)
                             const Text(
-                              '/ day',
+                              '/ dag',
                               style: TextStyle(
                                 fontSize: 11,
                                 color: Color(0xFF8A8A8A),
@@ -293,59 +304,121 @@ class _CarCard extends StatelessWidget {
                   ),
 
                   const SizedBox(height: 12),
-
+                  Text(
+                    appliance.description,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: Color(0xFF666666),
+                    ),
+                  ),
                   const SizedBox(height: 14),
                   const Divider(height: 1, color: Color(0xFFF0F0F0)),
                   const SizedBox(height: 12),
 
                   // Seller row
-                  Row(
-                    children: [
-                      CircleAvatar(
-                        radius: 18,
-                        backgroundImage: NetworkImage(listing.seller.avatarUrl),
-                        backgroundColor: const Color(0xFFEEEEEE),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                  FutureBuilder<DocumentSnapshot>(
+                    future: _fetchOwnerDetails(appliance.ownerId),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Row(
                           children: [
-                            Text(
-                              listing.seller.name,
-                              style: const TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                color: Color(0xFF1A1A2E),
-                              ),
+                            CircleAvatar(
+                              radius: 18,
+                              backgroundColor: Color(0xFFEEEEEE),
+                              child: CircularProgressIndicator(strokeWidth: 2),
                             ),
-                            Row(
+                            SizedBox(width: 10),
+                            Text('Laden gebruiker...'),
+                          ],
+                        );
+                      }
+                      if (snapshot.hasError ||
+                          !snapshot.hasData ||
+                          !snapshot.data!.exists) {
+                        return const Row(
+                          children: [
+                            CircleAvatar(
+                              radius: 18,
+                              backgroundColor: Color(0xFFEEEEEE),
+                              child: Icon(Icons.person, color: Colors.grey),
+                            ),
+                            SizedBox(width: 10),
+                            Text('Onbekende gebruiker'),
+                          ],
+                        );
+                      }
+                      final userData =
+                          snapshot.data!.data() as Map<String, dynamic>;
+                      final ownerName = userData['name'] ?? 'Onbekend';
+                      final ownerCity = userData['city'] ?? 'Onbekend';
+                      // Assuming a default avatar or fetching from user data if available
+                      final ownerAvatarUrl =
+                          userData['avatarUrl'] ??
+                          'https://i.pravatar.cc/150?img=60'; // Placeholder
+
+                      return Row(
+                        children: [
+                          CircleAvatar(
+                            radius: 18,
+                            backgroundImage: NetworkImage(ownerAvatarUrl),
+                            backgroundColor: const Color(0xFFEEEEEE),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Icon(
-                                  Icons.location_on_outlined,
-                                  size: 11,
-                                  color: Color(0xFF8A8A8A),
-                                ),
-                                const SizedBox(width: 2),
                                 Text(
-                                  listing.location,
+                                  ownerName,
                                   style: const TextStyle(
-                                    fontSize: 11,
-                                    color: Color(0xFF8A8A8A),
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFF1A1A2E),
                                   ),
+                                ),
+                                Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.location_on_outlined,
+                                      size: 11,
+                                      color: Color(0xFF8A8A8A),
+                                    ),
+                                    const SizedBox(width: 2),
+                                    Text(
+                                      ownerCity,
+                                      style: const TextStyle(
+                                        fontSize: 11,
+                                        color: Color(0xFF8A8A8A),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ],
                             ),
-                          ],
-                        ),
-                      ),
-                    ],
+                          ),
+                        ],
+                      );
+                    },
                   ),
                 ],
               ),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildImagePlaceholder() {
+    return Container(
+      height: 200,
+      color: const Color(0xFFEEEEEE),
+      child: const Icon(
+        Icons.camera_alt, // Generic icon for appliance
+        size: 60,
+        color: Color(0xFFCCCCCC),
       ),
     );
   }
