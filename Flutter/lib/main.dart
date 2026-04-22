@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_project/auth/login_screen.dart';
 import 'package:flutter_project/screens/navbar.dart';
+import 'package:flutter_project/screens/add_product_screen.dart';
 import 'package:go_router/go_router.dart';
 import 'firebase_options.dart';
 // import 'auth/login_screen.dart';
@@ -35,6 +36,10 @@ final GoRouter _router = GoRouter(
       builder: (context, state) => const RegisterScreen(),
     ),
     GoRoute(path: '/', builder: (context, state) => const navbar()),
+    GoRoute(
+      path: '/add-appliance',
+      builder: (context, state) => const AddProductScreen(),
+    ),
   ],
 );
 
