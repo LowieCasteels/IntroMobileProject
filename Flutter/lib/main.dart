@@ -28,7 +28,7 @@ void main() async {
 }
 
 final GoRouter _router = GoRouter(
-  initialLocation: '/register',
+  initialLocation: '/login',
   routes: [
     GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
     GoRoute(
