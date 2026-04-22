@@ -9,11 +9,9 @@ class ProfileScreen extends StatelessWidget {
     try {
       await FirebaseAuth.instance.signOut();
       if (context.mounted) {
-        // Navigeer naar het login scherm na succesvol uitloggen.
         context.go('/login');
       }
     } catch (e) {
-      // Optioneel: toon een foutmelding als het uitloggen mislukt.
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Fout bij het uitloggen: ${e.toString()}')),
@@ -27,9 +25,15 @@ class ProfileScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Profile')),
       body: Center(
-        child: ElevatedButton(
-          onPressed: () => _signOut(context),
-          child: const Text('Sign Out'),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: () => _signOut(context),
+              child: const Text('Sign Out'),
+            ),
+          ],
         ),
       ),
     );
