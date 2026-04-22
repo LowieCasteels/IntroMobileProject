@@ -71,8 +71,9 @@ class _LoginScreenState extends State<LoginScreen> {
       if (mounted) context.go('/');
     } on FirebaseAuthException catch (e) {
       String message = "Er is een fout opgetreden";
-      if (e.code == 'user-not-found')
+      if (e.code == 'user-not-found') {
         message = "Geen gebruiker gevonden met dit emailadres.";
+      }
       if (e.code == 'wrong-password') message = "Onjuist wachtwoord.";
 
       if (mounted) {
