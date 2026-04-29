@@ -536,17 +536,33 @@ class _ApplianceCard extends StatelessWidget {
                           snapshot.data!.data() as Map<String, dynamic>;
                       final ownerName = userData['name'] ?? 'Onbekend';
                       final ownerCity = userData['city'] ?? 'Onbekend';
-                      // Assuming a default avatar or fetching from user data if available
-                      final ownerAvatarUrl =
-                          userData['avatarUrl'] ??
-                          'https://i.pravatar.cc/150?img=60'; // Placeholder
+                      ImageProvider? ownerPhoto;
+                      if (userData['photoBase64'] != null) {
+                        ownerPhoto = MemoryImage(
+                          base64Decode(userData['photoBase64']),
+                        );
+                      } else if (userData['photoUrl'] != null) {
+                        ownerPhoto = NetworkImage(userData['photoUrl']);
+                      }
 
                       return Row(
                         children: [
                           CircleAvatar(
                             radius: 18,
-                            backgroundImage: NetworkImage(ownerAvatarUrl),
                             backgroundColor: const Color(0xFFEEEEEE),
+                            backgroundImage: ownerPhoto,
+                            child: ownerPhoto == null
+                                ? Text(
+                                    ownerName.isNotEmpty
+                                        ? ownerName[0].toUpperCase()
+                                        : '?',
+                                    style: const TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFF1A1A2E),
+                                    ),
+                                  )
+                                : null,
                           ),
                           const SizedBox(width: 10),
                           Expanded(
