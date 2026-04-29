@@ -119,6 +119,13 @@ class _AddProductScreenState extends State<AddProductScreen> {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) throw Exception("Gebruiker niet ingelogd.");
 
+      // Haal gebruikersgegevens op om de stad te krijgen
+      final userDoc = await FirebaseFirestore.instance
+          .collection('flutterUsers')
+          .doc(user.uid)
+          .get();
+      final city = userDoc.data()?['city'] ?? 'Onbekend';
+
       final isForRent = _transactionType[1];
 
       await FirebaseFirestore.instance.collection('appliances').add({
@@ -133,6 +140,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
         'base64Image': _base64Image,
         'isVisible': _isVisible,
         'createdAt': FieldValue.serverTimestamp(),
+        'city': city, // Voeg de stad van de gebruiker toe
       });
 
       if (mounted) {

@@ -14,6 +14,7 @@ class Appliance {
   final String transactionType; // 'huur' or 'leen'
   final String base64Image;
   final bool isVisible;
+  final String city; // Added city field
   final Timestamp createdAt;
 
   Appliance({
@@ -26,6 +27,7 @@ class Appliance {
     required this.transactionType,
     required this.base64Image,
     required this.isVisible,
+    required this.city, // Added city to constructor
     required this.createdAt,
   });
 
@@ -41,6 +43,7 @@ class Appliance {
       transactionType: data['transactionType'] ?? 'leen',
       base64Image: data['base64Image'] ?? '',
       isVisible: data['isVisible'] ?? false,
+      city: data['city'] ?? 'Onbekend', // Retrieve city from Firestore
       createdAt: data['createdAt'] ?? Timestamp.now(),
     );
   }
@@ -56,16 +59,103 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  // Stream to fetch appliances from Firestore
-  final Stream<List<Appliance>> _appliancesStream = FirebaseFirestore.instance
-      .collection('appliances')
-      .where('isVisible', isEqualTo: true) // Only show visible items
-      .orderBy('createdAt', descending: true) // Show newest first
-      .snapshots()
-      .map(
-        (snapshot) =>
-            snapshot.docs.map((doc) => Appliance.fromFirestore(doc)).toList(),
-      );
+  String? _selectedCategory;
+  final TextEditingController _locationController = TextEditingController();
+  String? _locationFilter;
+
+  final List<String> _categories = [
+    'Beeld & Geluid',
+    'Gaming & Speelgoed',
+    'Dieren & Toebehoren',
+    'Verzorging, Welzijn & Baby',
+    'Kleding & Kostuums',
+    'Klussen & Gereedschap',
+    'Koken & Tafelen',
+    'Huishouden & Schoonmaak',
+    'Vakantie, Sport & Vrije tijd',
+    'Vervoer & Transport',
+    'Computers, Telefoons & Toebehoren',
+    'Overige spullen',
+    'Party, Event & Tuinfeest',
+  ];
+
+  late Stream<QuerySnapshot> _firestoreStream;
+
+  @override
+  void initState() {
+    super.initState();
+    // Initialiseer de stream slechts één keer
+    _firestoreStream = FirebaseFirestore.instance
+        .collection('appliances')
+        .orderBy('createdAt', descending: true)
+        .snapshots();
+    _locationController.addListener(_onLocationChanged);
+  }
+
+  @override
+  void dispose() {
+    _locationController.removeListener(_onLocationChanged);
+    _locationController.dispose();
+    super.dispose();
+  }
+
+  void _onLocationChanged() {
+    // Update the location filter when the text changes
+    // Debouncing could be added here for performance if needed
+    setState(() {
+      _locationFilter = _locationController.text.trim().toLowerCase();
+      if (_locationFilter!.isEmpty) {
+        _locationFilter = null;
+      }
+    });
+  }
+
+  void _showCategoryFilter(BuildContext context) {
+    // Add 'Alles' to the list for the modal
+    final categoriesWithAll = ['Alles', ..._categories];
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (BuildContext context) {
+        return Padding(
+          padding: const EdgeInsets.only(top: 8.0),
+          child: ListView.builder(
+            itemCount: categoriesWithAll.length,
+            itemBuilder: (context, index) {
+              final category = categoriesWithAll[index];
+              final isSelected =
+                  (_selectedCategory == null && category == 'Alles') ||
+                  _selectedCategory == category;
+              return ListTile(
+                title: Text(
+                  category,
+                  style: TextStyle(
+                    fontWeight: isSelected
+                        ? FontWeight.bold
+                        : FontWeight.normal,
+                    color: isSelected
+                        ? const Color(0xFF2DBA8D)
+                        : Colors.black87,
+                  ),
+                ),
+                trailing: isSelected
+                    ? const Icon(Icons.check, color: Color(0xFF2DBA8D))
+                    : null,
+                onTap: () {
+                  setState(() {
+                    _selectedCategory = category == 'Alles' ? null : category;
+                  });
+                  Navigator.pop(context); // Close the bottom sheet
+                },
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -79,38 +169,110 @@ class _HomeScreenState extends State<HomeScreen> {
 
   SliverAppBar _buildAppBar() {
     return SliverAppBar(
-      expandedHeight: 110,
-      floating: false,
+      expandedHeight: 220, // Adjusted height
+      floating: true, // Make it float for better UX
       pinned: true,
       backgroundColor: const Color(0xFF1A1A2E),
       flexibleSpace: FlexibleSpaceBar(
-        titlePadding: const EdgeInsets.fromLTRB(20, 0, 20, 14),
-        title: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        centerTitle: false,
+        titlePadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+        title: const Text(
+          'Appelby',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
+        background: Column(
+          mainAxisAlignment: MainAxisAlignment.end,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: const [
-                Text(
-                  'Appelby',
-                  style: TextStyle(
-                    color: Color(0xFF2DBA8D),
-                    fontSize: 18,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 3,
-                  ),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 20),
+              child: Text(
+                'Appelby',
+                style: TextStyle(
+                  color: Color(0xFF2DBA8D),
+                  fontSize: 28,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 3,
                 ),
-                Text(
-                  'Koop · Verhuur · Leen',
-                  style: TextStyle(
-                    color: Colors.white54,
-                    fontSize: 10,
-                    letterSpacing: 1.5,
-                  ),
-                ),
-              ],
+              ),
             ),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 20),
+              child: Text(
+                'Koop · Verhuur · Leen',
+                style: TextStyle(
+                  color: Colors.white54,
+                  fontSize: 12,
+                  letterSpacing: 1.5,
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            // Location Search Input
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Container(
+                height: 40,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: TextField(
+                  controller: _locationController,
+                  decoration: InputDecoration(
+                    hintText: 'Zoek op toestel of locatie...',
+                    hintStyle: const TextStyle(color: Colors.grey),
+                    prefixIcon: const Icon(Icons.search, color: Colors.grey),
+                    suffixIcon: _locationController.text.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.clear, color: Colors.grey),
+                            onPressed: () {
+                              _locationController.clear();
+                            },
+                          )
+                        : null,
+                    border: InputBorder.none,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 8,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            // Category Filter Chips
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: InkWell(
+                onTap: () => _showCategoryFilter(context),
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  height: 45,
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[200],
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        _selectedCategory ?? 'Alle categorieën',
+                        style: const TextStyle(
+                          color: Colors.black87,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const Icon(Icons.arrow_drop_down, color: Colors.black54),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(
+              height: 56,
+            ), // Add padding at the bottom to not overlap with collapsed title
           ],
         ),
       ),
@@ -119,8 +281,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   //Listings
   Widget _buildApplianceList() {
-    return StreamBuilder<List<Appliance>>(
-      stream: _appliancesStream,
+    return StreamBuilder<QuerySnapshot>(
+      stream: _firestoreStream,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const SliverFillRemaining(
@@ -134,7 +296,31 @@ class _HomeScreenState extends State<HomeScreen> {
           );
         }
 
-        final appliances = snapshot.data ?? [];
+        // Haal alle documenten op en zet ze om naar Appliance objecten
+        List<Appliance> appliances =
+            snapshot.data?.docs
+                .map((doc) => Appliance.fromFirestore(doc))
+                .toList() ??
+            [];
+
+        // 1. Zichtbaarheid filter
+        appliances = appliances.where((a) => a.isVisible).toList();
+
+        // 2. Categorie filter
+        if (_selectedCategory != null && _selectedCategory != 'Alles') {
+          appliances = appliances
+              .where((a) => a.category == _selectedCategory)
+              .toList();
+        }
+
+        // 3. Zoek filter (Zoekt nu op zowel locatie als titel)
+        if (_locationFilter != null && _locationFilter!.isNotEmpty) {
+          appliances = appliances.where((a) {
+            final query = _locationFilter!;
+            return a.city.toLowerCase().contains(query) ||
+                a.title.toLowerCase().contains(query);
+          }).toList();
+        }
 
         if (appliances.isEmpty) {
           return SliverFillRemaining(
@@ -245,7 +431,9 @@ class _ApplianceCard extends StatelessWidget {
                   left: 12,
                   child: _Badge(
                     label: isForRent ? 'Te huur' : 'Te leen',
-                    icon: isForRent ? Icons.sell : Icons.real_estate_agent,
+                    icon: isForRent
+                        ? Icons.payments
+                        : Icons.handshake, // Changed icon for 'Te leen'
                     color: const Color(0xFF2ECC71),
                   ),
                 ),
@@ -381,7 +569,8 @@ class _ApplianceCard extends StatelessWidget {
                                     ),
                                     const SizedBox(width: 2),
                                     Text(
-                                      ownerCity,
+                                      // Use appliance.city for location display
+                                      appliance.city,
                                       style: const TextStyle(
                                         fontSize: 11,
                                         color: Color(0xFF8A8A8A),

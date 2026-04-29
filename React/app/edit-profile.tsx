@@ -6,7 +6,7 @@ import { auth, db } from '@/firebaseConfig';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { UserData } from '../../types';
+import { UserData } from '../types';
 import * as ImagePicker from 'expo-image-picker';
 
 export default function EditProfileScreen() {
