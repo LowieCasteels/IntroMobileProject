@@ -111,22 +111,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _uploadPhoto(XFile picked) async {
     final uid = _auth.currentUser?.uid;
     if (uid == null) {
-      print('DEBUG: No user logged in');
       return;
     }
 
     setState(() => _isUploading = true);
     try {
-      print('DEBUG: Starting upload for uid: $uid');
       final url = await uploadPickedFile(picked, uid, _storage);
-      print('DEBUG: Got download URL: $url');
       await _firestore.collection('users').doc(uid).set({
         'photoUrl': url,
       }, SetOptions(merge: true));
-      print('DEBUG: Saved to Firestore');
       setState(() => _photoUrl = url);
     } catch (e) {
-      print('DEBUG: Error: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Upload mislukt: ${e.toString()}')),
