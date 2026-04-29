@@ -119,13 +119,13 @@ class _AddProductScreenState extends State<AddProductScreen> {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) throw Exception("Gebruiker niet ingelogd.");
 
-      // Haal gebruikersgegevens op om de stad te krijgen
+      // Haal gebruikersgegevens op om het adres te krijgen
       final userDoc = await FirebaseFirestore.instance
           .collection('flutterUsers')
           .doc(user.uid)
           .get();
       final userData = userDoc.data();
-      final city = userData?['city'] ?? 'Onbekend';
+      final address = userData?['address'] ?? userData?['city'] ?? 'Onbekend';
       final lat = userData?['lat'];
       final lng = userData?['lng'];
 
@@ -143,7 +143,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
         'base64Image': _base64Image,
         'isVisible': _isVisible,
         'createdAt': FieldValue.serverTimestamp(),
-        'city': city, // Voeg de stad van de gebruiker toe
+        'address': address, // Voeg het adres van de gebruiker toe
         'lat': lat,
         'lng': lng,
       });

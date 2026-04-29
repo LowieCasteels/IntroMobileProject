@@ -1,5 +1,6 @@
 import 'package:device_preview/device_preview.dart';
 import 'package:flutter/foundation.dart';
+import 'dart:html' as html;
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_project/auth/login_screen.dart';
@@ -11,6 +12,22 @@ import 'firebase_options.dart';
 // import 'auth/login_screen.dart';
 import 'auth/register_screen.dart';
 
+void _loadGoogleMapsScript() {
+  if (kIsWeb) {
+    // Haal de API key op die via --dart-define is meegegeven.
+    const apiKey = String.fromEnvironment('GOOGLE_MAPS_API_KEY');
+    if (apiKey.isEmpty) {
+      print(
+        'Google Maps API Key is niet gevonden. Zorg dat je de app start met --dart-define=GOOGLE_MAPS_API_KEY=JOUW_KEY',
+      );
+    }
+    html.document.head!.append(
+      html.ScriptElement()
+        ..src = 'https://maps.googleapis.com/maps/api/js?key=$apiKey',
+    );
+  }
+}
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
@@ -19,6 +36,7 @@ void main() async {
   //   builder: (context) => MyApp(), // Wrap your app
   // );
   // runApp(const MyApp());
+  _loadGoogleMapsScript();
   runApp(
     DevicePreview(
       builder: (context) {
