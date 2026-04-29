@@ -127,6 +127,9 @@ class MapScreenState extends State<MapScreen> {
 
       final appliances = snapshot.docs
           .map((doc) => Appliance.fromFirestore(doc))
+          .where(
+            (appliance) => appliance.isVisible,
+          ) // Verberg onzichtbare toestellen
           .toList();
 
       final Set<Marker> markers = {};
@@ -141,8 +144,8 @@ class MapScreenState extends State<MapScreen> {
             .doc(user.uid)
             .get();
         final userData = userDoc.data();
-        userLat = userData?['lat'];
-        userLng = userData?['lng'];
+        userLat = (userData?['lat'] as num?)?.toDouble();
+        userLng = (userData?['lng'] as num?)?.toDouble();
       }
 
       for (final appliance in appliances) {

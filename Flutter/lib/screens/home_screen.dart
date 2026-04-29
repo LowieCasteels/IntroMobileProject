@@ -51,8 +51,8 @@ class Appliance {
           data['address'] ??
           data['city'] ??
           'Onbekend', // Retrieve address from Firestore
-      lat: data['lat'],
-      lng: data['lng'],
+      lat: (data['lat'] as num?)?.toDouble(),
+      lng: (data['lng'] as num?)?.toDouble(),
       createdAt: data['createdAt'] ?? Timestamp.now(),
     );
   }
