@@ -1,4 +1,6 @@
 import 'dart:io';
+import 'web/file_upload_stub.dart'
+    if (dart.library.io) 'mobile/file_upload_io.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:go_router/go_router.dart';
@@ -98,24 +100,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
     if (picked == null) return;
 
-    await _uploadPhoto(File(picked.path));
+    await _uploadPhoto(picked);
   }
 
-  Future<void> _uploadPhoto(File file) async {
+  Future<void> _uploadPhoto(XFile picked) async {
     final uid = _auth.currentUser?.uid;
     if (uid == null) return;
 
     setState(() => _isUploading = true);
-
     try {
-      final ref = _storage.ref().child('profile_photos/$uid.jpg');
-      await ref.putFile(file);
-      final url = await ref.getDownloadURL();
-
+      final url = await uploadPickedFile(picked, uid, _storage);
       await _firestore.collection('users').doc(uid).set({
         'photoUrl': url,
       }, SetOptions(merge: true));
-
       setState(() => _photoUrl = url);
     } catch (e) {
       if (mounted) {
