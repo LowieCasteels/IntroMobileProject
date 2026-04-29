@@ -1,6 +1,6 @@
-import 'dart:io';
 import 'web/file_upload_stub.dart'
     if (dart.library.io) 'mobile/file_upload_io.dart';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:go_router/go_router.dart';
@@ -35,8 +35,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (uid == null) return;
 
     final doc = await _firestore.collection('users').doc(uid).get();
-    if (doc.exists && doc.data()?['photoUrl'] != null) {
-      setState(() => _photoUrl = doc.data()!['photoUrl']);
+    if (doc.exists) {
+      final data = doc.data()!;
+      if (data['photoBase64'] != null) {
+        setState(() => _photoUrl = 'base64:${data['photoBase64']}');
+      } else if (data['photoUrl'] != null) {
+        setState(() => _photoUrl = data['photoUrl']);
+      }
     }
   }
 
@@ -105,16 +110,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _uploadPhoto(XFile picked) async {
     final uid = _auth.currentUser?.uid;
-    if (uid == null) return;
+    if (uid == null) {
+      print('DEBUG: No user logged in');
+      return;
+    }
 
     setState(() => _isUploading = true);
     try {
+      print('DEBUG: Starting upload for uid: $uid');
       final url = await uploadPickedFile(picked, uid, _storage);
+      print('DEBUG: Got download URL: $url');
       await _firestore.collection('users').doc(uid).set({
         'photoUrl': url,
       }, SetOptions(merge: true));
+      print('DEBUG: Saved to Firestore');
       setState(() => _photoUrl = url);
     } catch (e) {
+      print('DEBUG: Error: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Upload mislukt: ${e.toString()}')),
@@ -171,7 +183,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   radius: 56,
                   backgroundColor: Colors.blue[100],
                   backgroundImage: _photoUrl != null
-                      ? NetworkImage(_photoUrl!)
+                      ? (_photoUrl!.startsWith('base64:')
+                            ? MemoryImage(base64Decode(_photoUrl!.substring(7)))
+                            : NetworkImage(_photoUrl!) as ImageProvider)
                       : null,
                   child: _isUploading
                       ? const CircularProgressIndicator()
