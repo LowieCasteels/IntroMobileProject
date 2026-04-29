@@ -74,5 +74,7 @@
 	<string>Deze app heeft je locatie nodig om relevante toestellen op de kaart te tonen.</string>
 	<key>NSLocationAlwaysUsageDescription</key>
 	<string>Deze app heeft je locatie nodig om relevante toestellen op de kaart te tonen.</string>
+	<key>GOOGLE_MAPS_API_KEY</key>
+	<string>$(GOOGLE_MAPS_API_KEY)</string>
 </dict>
 </plist>

@@ -15,7 +15,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _cityController = TextEditingController();
 
   // Helper voor de styling van de labels (zoals in je RN code)
   Widget _buildLabel(String text) {
@@ -59,37 +58,21 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   Future<void> _handleRegister() async {
     try {
+      // Stap 1: Maak de gebruiker aan in Firebase Auth
       UserCredential userCredential = await FirebaseAuth.instance
           .createUserWithEmailAndPassword(
             email: _emailController.text.trim(),
             password: _passwordController.text.trim(),
           );
 
-      // Geocode the city to get coordinates
-      double? lat;
-      double? lng;
-      try {
-        List<Location> locations = await locationFromAddress(
-          _cityController.text.trim(),
-        );
-        if (locations.isNotEmpty) {
-          lat = locations.first.latitude;
-          lng = locations.first.longitude;
-        }
-      } catch (e) {
-        print("Could not geocode city: $e");
-      }
-
+      // Stap 2: Sla de data op in Firestore (zonder adres)
       await FirebaseFirestore.instance
           .collection('flutterUsers')
           .doc(userCredential.user!.uid)
           .set({
             'name': _nameController.text.trim(),
-            'city': _cityController.text.trim(),
             'email': _emailController.text.trim().toLowerCase(),
             'createdAt': FieldValue.serverTimestamp(),
-            'lat': lat,
-            'lng': lng,
           });
 
       if (mounted) context.go('/');
@@ -127,9 +110,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
               _buildLabel("Volledige naam"),
               _buildTextField(_nameController, "Naam"),
-
-              _buildLabel("Woonplaats"),
-              _buildTextField(_cityController, "Bijv. Antwerpen"),
 
               _buildLabel("Email"),
               _buildTextField(_emailController, "Email"),

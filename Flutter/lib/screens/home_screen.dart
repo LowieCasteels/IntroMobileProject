@@ -14,7 +14,7 @@ class Appliance {
   final String transactionType; // 'huur' or 'leen'
   final String base64Image;
   final bool isVisible;
-  final String city; // Added city field
+  final String address; // Added address field
   final double? lat;
   final double? lng;
   final Timestamp createdAt;
@@ -29,7 +29,7 @@ class Appliance {
     required this.transactionType,
     required this.base64Image,
     required this.isVisible,
-    required this.city, // Added city to constructor
+    required this.address, // Added address to constructor
     this.lat,
     this.lng,
     required this.createdAt,
@@ -47,7 +47,10 @@ class Appliance {
       transactionType: data['transactionType'] ?? 'leen',
       base64Image: data['base64Image'] ?? '',
       isVisible: data['isVisible'] ?? false,
-      city: data['city'] ?? 'Onbekend', // Retrieve city from Firestore
+      address:
+          data['address'] ??
+          data['city'] ??
+          'Onbekend', // Retrieve address from Firestore
       lat: data['lat'],
       lng: data['lng'],
       createdAt: data['createdAt'] ?? Timestamp.now(),
@@ -319,7 +322,7 @@ class _HomeScreenState extends State<HomeScreen> {
         if (_locationFilter != null && _locationFilter!.isNotEmpty) {
           appliances = appliances.where((a) {
             final query = _locationFilter!;
-            return a.city.toLowerCase().contains(query) ||
+            return a.address.toLowerCase().contains(query) ||
                 a.title.toLowerCase().contains(query);
           }).toList();
         }
@@ -544,7 +547,6 @@ class _ApplianceCard extends StatelessWidget {
                       } else if (userData['photoUrl'] != null) {
                         ownerPhoto = NetworkImage(userData['photoUrl']);
                       }
-
                       return Row(
                         children: [
                           CircleAvatar(
@@ -586,8 +588,8 @@ class _ApplianceCard extends StatelessWidget {
                                     ),
                                     const SizedBox(width: 2),
                                     Text(
-                                      // Use appliance.city for location display
-                                      appliance.city,
+                                      // Use appliance.address for location display
+                                      appliance.address,
                                       style: const TextStyle(
                                         fontSize: 11,
                                         color: Color(0xFF8A8A8A),
