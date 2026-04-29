@@ -25,6 +25,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _isUploading = false;
   String? _photoUrl;
   String? _city;
+  String? _name;
 
   @override
   void initState() {
@@ -44,7 +45,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
       } else if (data['photoUrl'] != null) {
         setState(() => _photoUrl = data['photoUrl']);
       }
-      setState(() => _city = data['city']);
+      setState(() {
+        _city = data['city'];
+        _name =
+            data['name'] ??
+            data['displayName'] ??
+            _auth.currentUser?.displayName;
+      });
     }
   }
 
@@ -222,10 +229,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 )
                               : _photoUrl == null
                               ? Text(
-                                  user?.displayName
-                                          ?.substring(0, 1)
-                                          .toUpperCase() ??
-                                      '?',
+                                  _name?.substring(0, 1).toUpperCase() ?? '?',
                                   style: const TextStyle(
                                     fontSize: 20,
                                     fontWeight: FontWeight.w500,
@@ -267,7 +271,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            user?.displayName ?? 'Naam onbekend',
+                            _name ?? 'Naam onbekend',
                             style: const TextStyle(
                               color: Colors.white,
                               fontSize: 17,
