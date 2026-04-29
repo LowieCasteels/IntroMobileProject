@@ -310,7 +310,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
                 ),
               _buildLabel("Categorie"),
               DropdownButtonFormField<String>(
-                value: _selectedCategory,
+                initialValue: _selectedCategory,
                 hint: const Text('Kies een categorie'),
                 decoration: InputDecoration(
                   border: OutlineInputBorder(
@@ -333,7 +333,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
                 title: const Text("Zichtbaar voor anderen"),
                 value: _isVisible,
                 onChanged: (bool value) => setState(() => _isVisible = value),
-                activeColor: greenColor,
+                activeThumbColor: greenColor,
                 contentPadding: EdgeInsets.zero,
               ),
               const SizedBox(height: 32),

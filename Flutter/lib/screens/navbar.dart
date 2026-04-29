@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'home_screen.dart';
 import 'search_screen.dart';
 import 'add_product_screen.dart';

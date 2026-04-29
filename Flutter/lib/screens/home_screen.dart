@@ -421,8 +421,7 @@ class _ApplianceCard extends StatelessWidget {
                           height: 200,
                           width: double.infinity,
                           fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) =>
-                              _buildImagePlaceholder(),
+                          errorBuilder: (_, _, _) => _buildImagePlaceholder(),
                         )
                       : _buildImagePlaceholder(),
                 ),
