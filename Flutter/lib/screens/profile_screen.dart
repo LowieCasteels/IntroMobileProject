@@ -1,12 +1,13 @@
-import 'web/file_upload_stub.dart'
-    if (dart.library.io) 'mobile/file_upload_io.dart';
 import 'dart:convert';
-import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_storage/firebase_storage.dart';
+
+import 'web/file_upload_stub.dart'
+    if (dart.library.io) 'mobile/file_upload_io.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -23,18 +24,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   bool _isUploading = false;
   String? _photoUrl;
+  String? _city;
 
   @override
   void initState() {
     super.initState();
-    _loadProfilePhoto();
+    _loadProfile();
   }
 
-  Future<void> _loadProfilePhoto() async {
+  Future<void> _loadProfile() async {
     final uid = _auth.currentUser?.uid;
     if (uid == null) return;
 
-    final doc = await _firestore.collection('users').doc(uid).get();
+    final doc = await _firestore.collection('flutterUsers').doc(uid).get();
     if (doc.exists) {
       final data = doc.data()!;
       if (data['photoBase64'] != null) {
@@ -42,11 +44,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
       } else if (data['photoUrl'] != null) {
         setState(() => _photoUrl = data['photoUrl']);
       }
+      setState(() => _city = data['city']);
     }
   }
 
   Future<void> _pickAndUploadPhoto() async {
-    // Show bottom sheet to choose source
     final source = await showModalBottomSheet<ImageSource>(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -110,14 +112,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _uploadPhoto(XFile picked) async {
     final uid = _auth.currentUser?.uid;
-    if (uid == null) {
-      return;
-    }
+    if (uid == null) return;
 
     setState(() => _isUploading = true);
     try {
       final url = await uploadPickedFile(picked, uid, _storage);
-      await _firestore.collection('users').doc(uid).set({
+      await _firestore.collection('flutterUsers').doc(uid).set({
         'photoUrl': url,
       }, SetOptions(merge: true));
       setState(() => _photoUrl = url);
@@ -138,8 +138,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     setState(() => _isUploading = true);
     try {
-      await _storage.ref().child('profile_photos/$uid.jpg').delete();
-      await _firestore.collection('users').doc(uid).update({
+      await _firestore.collection('flutterUsers').doc(uid).update({
+        'photoBase64': FieldValue.delete(),
         'photoUrl': FieldValue.delete(),
       });
       setState(() => _photoUrl = null);
@@ -162,64 +162,188 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  ImageProvider? get _profileImage {
+    if (_photoUrl == null) return null;
+    if (_photoUrl!.startsWith('base64:')) {
+      return MemoryImage(base64Decode(_photoUrl!.substring(7)));
+    }
+    return NetworkImage(_photoUrl!);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Profiel')),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // --- Profile photo with edit button ---
-            Stack(
-              alignment: Alignment.bottomRight,
-              children: [
-                CircleAvatar(
-                  radius: 56,
-                  backgroundColor: Colors.blue[100],
-                  backgroundImage: _photoUrl != null
-                      ? (_photoUrl!.startsWith('base64:')
-                            ? MemoryImage(base64Decode(_photoUrl!.substring(7)))
-                            : NetworkImage(_photoUrl!) as ImageProvider)
-                      : null,
-                  child: _isUploading
-                      ? const CircularProgressIndicator()
-                      : _photoUrl == null
-                      ? Text(
-                          _auth.currentUser?.displayName
-                                  ?.substring(0, 1)
-                                  .toUpperCase() ??
-                              '?',
-                          style: const TextStyle(
-                            fontSize: 36,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        )
-                      : null,
-                ),
-                GestureDetector(
-                  onTap: _isUploading ? null : _pickAndUploadPhoto,
-                  child: Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: Colors.blue[700],
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 2),
-                    ),
-                    child: const Icon(
-                      Icons.camera_alt,
-                      size: 16,
-                      color: Colors.white,
-                    ),
+      body: Column(
+        children: [
+          _buildHeader(),
+          Expanded(
+            child: SingleChildScrollView(
+              child: Column(
+                children: [
+                  const SizedBox(height: 20),
+                  ElevatedButton(
+                    onPressed: () => _signOut(context),
+                    child: const Text('Uitloggen'),
                   ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeader() {
+    final user = _auth.currentUser;
+
+    return Container(
+      color: const Color(0xFF1A1A2E),
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 52, 20, 16),
+            child: Column(
+              children: [
+                const SizedBox(height: 15),
+
+                // Avatar + name + location row
+                Row(
+                  children: [
+                    Stack(
+                      children: [
+                        CircleAvatar(
+                          radius: 32,
+                          backgroundColor: const Color(0xFFB5D4F4),
+                          backgroundImage: _profileImage,
+                          child: _isUploading
+                              ? const CircularProgressIndicator(
+                                  color: Colors.white,
+                                )
+                              : _photoUrl == null
+                              ? Text(
+                                  user?.displayName
+                                          ?.substring(0, 1)
+                                          .toUpperCase() ??
+                                      '?',
+                                  style: const TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.w500,
+                                    color: Color(0xFF042C53),
+                                  ),
+                                )
+                              : null,
+                        ),
+                        Positioned(
+                          bottom: 0,
+                          right: 0,
+                          child: GestureDetector(
+                            onTap: _isUploading ? null : _pickAndUploadPhoto,
+                            child: Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF27500A),
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: Colors.white,
+                                  width: 1.5,
+                                ),
+                              ),
+                              child: const Icon(
+                                Icons.camera_alt,
+                                size: 10,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(width: 14),
+
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            user?.displayName ?? 'Naam onbekend',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 17,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 3),
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.location_on_outlined,
+                                size: 13,
+                                color: Color(0xFF85B7EB),
+                              ),
+                              const SizedBox(width: 3),
+                              Text(
+                                _city ?? 'Locatie onbekend',
+                                style: const TextStyle(
+                                  color: Color(0xFF85B7EB),
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
+          ),
 
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () => _signOut(context),
-              child: const Text('Sign Out'),
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            color: const Color(0xFF2DBA8D),
+            child: Row(
+              children: [
+                _buildStat('5', 'Beoordeling'),
+                _buildStat('23', 'Verhuren'),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStat(String value, String label, {bool isLast = false}) {
+    return Expanded(
+      child: Container(
+        decoration: BoxDecoration(
+          border: isLast
+              ? null
+              : const Border(
+                  right: BorderSide(color: Color(0xFF185FA5), width: 0.5),
+                ),
+        ),
+        child: Column(
+          children: [
+            Text(
+              value,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              label,
+              style: const TextStyle(
+                color: Color.fromARGB(255, 255, 255, 255),
+                fontSize: 11,
+              ),
             ),
           ],
         ),
