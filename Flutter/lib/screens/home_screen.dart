@@ -15,6 +15,8 @@ class Appliance {
   final String base64Image;
   final bool isVisible;
   final String city; // Added city field
+  final double? lat;
+  final double? lng;
   final Timestamp createdAt;
 
   Appliance({
@@ -28,6 +30,8 @@ class Appliance {
     required this.base64Image,
     required this.isVisible,
     required this.city, // Added city to constructor
+    this.lat,
+    this.lng,
     required this.createdAt,
   });
 
@@ -44,6 +48,8 @@ class Appliance {
       base64Image: data['base64Image'] ?? '',
       isVisible: data['isVisible'] ?? false,
       city: data['city'] ?? 'Onbekend', // Retrieve city from Firestore
+      lat: data['lat'],
+      lng: data['lng'],
       createdAt: data['createdAt'] ?? Timestamp.now(),
     );
   }

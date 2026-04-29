@@ -1,9 +1,16 @@
 import 'package:flutter/material.dart';
+<<<<<<< HEAD
 import 'home_screen.dart';
 import 'search_screen.dart';
 import 'add_product_screen.dart';
 import 'products_screen.dart';
 import 'profile_screen.dart';
+=======
+import 'package:flutter_project/screens/home_screen.dart';
+import 'package:flutter_project/screens/map_screen.dart';
+import 'package:flutter_project/screens/profile_screen.dart';
+import 'package:go_router/go_router.dart';
+>>>>>>> af1ac14dfe492dfe418581cd118d26717022aa65
 
 class navbar extends StatefulWidget {
   const navbar({super.key});
@@ -13,45 +20,77 @@ class navbar extends StatefulWidget {
 }
 
 class _navbarState extends State<navbar> {
-  int _currentIndex = 0;
+  int _selectedIndex = 0;
 
-  final List<Widget> _screens = [
-    const HomeScreen(),
-    const SearchScreen(),
-    const AddProductScreen(),
-    const ProductsScreen(),
-    const ProfileScreen(),
+  static const List<Widget> _pages = <Widget>[
+    HomeScreen(),
+    MapScreen(),
+    Center(child: Text('Berichten (nog niet geïmplementeerd)')), // Placeholder
+    ProfileScreen(),
   ];
+
+  void _onItemTapped(int index) {
+    setState(() {
+      _selectedIndex = index;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
+    final Color activeColor = const Color(0xFF2DBA8D);
+    final Color inactiveColor = Colors.grey;
+
     return Scaffold(
-      body: _screens[_currentIndex],
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: (index) => setState(() => _currentIndex = index),
-        selectedItemColor: const Color(0xFF2DBA8D),
-        unselectedItemColor: Colors.black,
-        type: BottomNavigationBarType.fixed,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home, size: 35), label: ''),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.search, size: 35),
-            label: '',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.add_circle, size: 35),
-            label: '',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.list_alt_outlined, size: 35),
-            label: '',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person, size: 35),
-            label: '',
-          ),
-        ],
+      body: IndexedStack(index: _selectedIndex, children: _pages),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => context.push('/add-appliance'),
+        backgroundColor: activeColor,
+        child: const Icon(Icons.add, color: Colors.white),
+        shape: const CircleBorder(),
+        elevation: 2.0,
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+      bottomNavigationBar: BottomAppBar(
+        shape: const CircularNotchedRectangle(),
+        notchMargin: 8.0,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: <Widget>[
+            IconButton(
+              tooltip: 'Home',
+              icon: Icon(
+                Icons.home,
+                color: _selectedIndex == 0 ? activeColor : inactiveColor,
+              ),
+              onPressed: () => _onItemTapped(0),
+            ),
+            IconButton(
+              tooltip: 'Kaart',
+              icon: Icon(
+                Icons.map,
+                color: _selectedIndex == 1 ? activeColor : inactiveColor,
+              ),
+              onPressed: () => _onItemTapped(1),
+            ),
+            const SizedBox(width: 40), // The space for the FAB
+            IconButton(
+              tooltip: 'Berichten',
+              icon: Icon(
+                Icons.message,
+                color: _selectedIndex == 2 ? activeColor : inactiveColor,
+              ),
+              onPressed: () => _onItemTapped(2),
+            ),
+            IconButton(
+              tooltip: 'Profiel',
+              icon: Icon(
+                Icons.person,
+                color: _selectedIndex == 3 ? activeColor : inactiveColor,
+              ),
+              onPressed: () => _onItemTapped(3),
+            ),
+          ],
+        ),
       ),
     );
   }

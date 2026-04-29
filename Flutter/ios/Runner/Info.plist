@@ -70,5 +70,9 @@
 	<string>Deze app heeft toegang tot je fotobibliotheek nodig om een foto van het toestel te kunnen uploaden.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>Deze app heeft toegang tot je camera nodig om een foto van het toestel te kunnen maken.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Deze app heeft je locatie nodig om relevante toestellen op de kaart te tonen.</string>
+	<key>NSLocationAlwaysUsageDescription</key>
+	<string>Deze app heeft je locatie nodig om relevante toestellen op de kaart te tonen.</string>
 </dict>
 </plist>
