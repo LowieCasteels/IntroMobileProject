@@ -20,6 +20,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
   final _descriptionController = TextEditingController();
   final _priceController = TextEditingController();
 
+  String? _userAddress;
   String? _base64Image; // Om de base64 string van de afbeelding op te slaan
   String? _selectedCategory;
   // Index 0: Te leen, Index 1: Te huur
@@ -51,6 +52,25 @@ class _AddProductScreenState extends State<AddProductScreen> {
     _titleController.addListener(() {
       setState(() {});
     });
+    _fetchUserAddress();
+  }
+
+  Future<void> _fetchUserAddress() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      final doc = await FirebaseFirestore.instance
+          .collection('flutterUsers')
+          .doc(user.uid)
+          .get();
+      if (mounted) {
+        setState(() {
+          _userAddress =
+              doc.data()?['address'] ??
+              doc.data()?['city'] ??
+              'Geen locatie ingesteld';
+        });
+      }
+    }
   }
 
   @override
@@ -332,6 +352,31 @@ class _AddProductScreenState extends State<AddProductScreen> {
                     setState(() => _selectedCategory = newValue),
                 validator: (value) =>
                     value == null ? 'Categorie is verplicht' : null,
+              ),
+              const SizedBox(height: 16),
+              _buildLabel("Locatie van toestel"),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.grey[100],
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.grey.shade300),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.location_on, color: Color(0xFF2DBA8D)),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        _userAddress ?? 'Locatie laden...',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          color: Colors.black87,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
               const SizedBox(height: 16),
               SwitchListTile(
