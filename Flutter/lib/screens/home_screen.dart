@@ -182,10 +182,6 @@ class _HomeScreenState extends State<HomeScreen> {
       flexibleSpace: FlexibleSpaceBar(
         centerTitle: false,
         titlePadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-        title: const Text(
-          'Appelby',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-        ),
         background: Column(
           mainAxisAlignment: MainAxisAlignment.end,
           crossAxisAlignment: CrossAxisAlignment.start,
