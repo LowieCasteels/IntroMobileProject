@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_project/screens/home_screen.dart';
+import 'home_screen.dart';
+// import 'search_screen.dart';
+// import 'add_product_screen.dart';
+// import 'products_screen.dart';
+import 'profile_screen.dart';
+// import 'package:flutter_project/screens/home_screen.dart';
 import 'package:flutter_project/screens/map_screen.dart';
-import 'package:flutter_project/screens/profile_screen.dart';
+// import 'package:flutter_project/screens/profile_screen.dart';
 import 'package:go_router/go_router.dart';
 
 class navbar extends StatefulWidget {
