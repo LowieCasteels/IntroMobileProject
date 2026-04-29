@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:go_router/go_router.dart';
+import 'package:geocoding/geocoding.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -64,6 +65,21 @@ class _RegisterScreenState extends State<RegisterScreen> {
             password: _passwordController.text.trim(),
           );
 
+      // Geocode the city to get coordinates
+      double? lat;
+      double? lng;
+      try {
+        List<Location> locations = await locationFromAddress(
+          _cityController.text.trim(),
+        );
+        if (locations.isNotEmpty) {
+          lat = locations.first.latitude;
+          lng = locations.first.longitude;
+        }
+      } catch (e) {
+        print("Could not geocode city: $e");
+      }
+
       await FirebaseFirestore.instance
           .collection('flutterUsers')
           .doc(userCredential.user!.uid)
@@ -72,6 +88,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
             'city': _cityController.text.trim(),
             'email': _emailController.text.trim().toLowerCase(),
             'createdAt': FieldValue.serverTimestamp(),
+            'lat': lat,
+            'lng': lng,
           });
 
       if (mounted) context.go('/');

@@ -124,7 +124,10 @@ class _AddProductScreenState extends State<AddProductScreen> {
           .collection('flutterUsers')
           .doc(user.uid)
           .get();
-      final city = userDoc.data()?['city'] ?? 'Onbekend';
+      final userData = userDoc.data();
+      final city = userData?['city'] ?? 'Onbekend';
+      final lat = userData?['lat'];
+      final lng = userData?['lng'];
 
       final isForRent = _transactionType[1];
 
@@ -141,6 +144,8 @@ class _AddProductScreenState extends State<AddProductScreen> {
         'isVisible': _isVisible,
         'createdAt': FieldValue.serverTimestamp(),
         'city': city, // Voeg de stad van de gebruiker toe
+        'lat': lat,
+        'lng': lng,
       });
 
       if (mounted) {
