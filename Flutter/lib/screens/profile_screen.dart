@@ -22,6 +22,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final _firestore = FirebaseFirestore.instance;
   final _picker = ImagePicker();
 
+  late final TextEditingController _nameController;
+  late final TextEditingController _cityController;
+
   bool _isUploading = false;
   String? _photoUrl;
   String? _city;
@@ -30,6 +33,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   void initState() {
     super.initState();
+    _nameController = TextEditingController();
+    _cityController = TextEditingController();
     _loadProfile();
   }
 
@@ -52,6 +57,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
             data['displayName'] ??
             _auth.currentUser?.displayName;
       });
+      _nameController.text = _name ?? '';
+      _cityController.text = _city ?? '';
     }
   }
 
@@ -202,8 +209,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildHeader() {
-    final user = _auth.currentUser;
-
     return Container(
       color: const Color(0xFF1A1A2E),
       child: Column(
@@ -212,8 +217,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
             padding: const EdgeInsets.fromLTRB(20, 52, 20, 16),
             child: Column(
               children: [
-                const SizedBox(height: 15),
-
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    IconButton(
+                      icon: const Icon(
+                        Icons.edit_outlined,
+                        color: Color(0xFFB5D4F4),
+                        size: 20,
+                      ),
+                      onPressed: _editProfile,
+                    ),
+                  ],
+                ),
                 // Avatar + name + location row
                 Row(
                   children: [
@@ -308,7 +324,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
           Container(
             padding: const EdgeInsets.symmetric(vertical: 10),
-            color: const Color(0xFF2DBA8D),
+            color: const Color(0xFF1F8A6A),
             child: Row(
               children: [
                 _buildStat('5', 'Beoordeling'),
@@ -353,5 +369,104 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _editProfile() async {
+    // Sync current values before opening
+    _nameController.text = _name ?? '';
+    _cityController.text = _city ?? '';
+
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) => Padding(
+        padding: EdgeInsets.fromLTRB(
+          20,
+          20,
+          20,
+          MediaQuery.of(context).viewInsets.bottom + 20,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            const Text(
+              'Profiel bewerken',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _nameController,
+              decoration: const InputDecoration(
+                labelText: 'Naam',
+                prefixIcon: Icon(Icons.person_outline),
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _cityController,
+              decoration: const InputDecoration(
+                labelText: 'Stad',
+                prefixIcon: Icon(Icons.location_on_outlined),
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF1F8A6A),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                ),
+                onPressed: () async {
+                  final uid = _auth.currentUser?.uid;
+                  if (uid == null) return;
+
+                  final newName = _nameController.text.trim();
+                  final newCity = _cityController.text.trim();
+
+                  await _firestore.collection('flutterUsers').doc(uid).set({
+                    'name': newName,
+                    'city': newCity,
+                  }, SetOptions(merge: true));
+
+                  setState(() {
+                    _name = newName;
+                    _city = newCity;
+                  });
+
+                  if (context.mounted) Navigator.pop(context);
+                },
+                child: const Text('Opslaan'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _cityController.dispose();
+    super.dispose();
   }
 }
