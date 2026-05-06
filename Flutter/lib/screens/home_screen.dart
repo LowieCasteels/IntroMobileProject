@@ -2,6 +2,7 @@ import 'dart:convert'; // For base64Decode
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_project/models/appliance.dart';
+import 'package:flutter_project/screens/appliance_Detail_screen.dart';
 
 //HomeScreen
 
@@ -349,7 +350,11 @@ class _ApplianceCardState extends State<_ApplianceCard> {
 
     return GestureDetector(
       onTap: () {
-        // TODO: navigate to detail page
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => ApplianceDetailScreen(appliance: widget.appliance),
+          ),
+        );
       },
       child: Container(
         decoration: BoxDecoration(
