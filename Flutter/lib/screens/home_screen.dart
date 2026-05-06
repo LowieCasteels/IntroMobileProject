@@ -130,10 +130,6 @@ class _HomeScreenState extends State<HomeScreen> {
       flexibleSpace: FlexibleSpaceBar(
         centerTitle: false,
         titlePadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-        title: const Text(
-          'Appelby',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-        ),
         background: Column(
           mainAxisAlignment: MainAxisAlignment.end,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -326,20 +322,29 @@ class _HomeScreenState extends State<HomeScreen> {
 
 //Appliance card
 
-class _ApplianceCard extends StatelessWidget {
+class _ApplianceCard extends StatefulWidget {
   final Appliance appliance;
   const _ApplianceCard({required this.appliance});
 
-  // Helper to fetch user details
-  Future<DocumentSnapshot> _fetchOwnerDetails(String ownerId) {
-    return FirebaseFirestore.instance
+  @override
+  State<_ApplianceCard> createState() => _ApplianceCardState();
+}
+
+class _ApplianceCardState extends State<_ApplianceCard> {
+  late Future<DocumentSnapshot> _ownerFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _ownerFuture = FirebaseFirestore.instance
         .collection('flutterUsers')
-        .doc(ownerId)
+        .doc(widget.appliance.ownerId)
         .get();
   }
 
   @override
   Widget build(BuildContext context) {
+    final appliance = widget.appliance;
     final isForRent = appliance.transactionType == 'huur';
 
     return GestureDetector(
@@ -368,7 +373,6 @@ class _ApplianceCard extends StatelessWidget {
                   borderRadius: const BorderRadius.vertical(
                     top: Radius.circular(20),
                   ),
-
                   child: appliance.base64Image.isNotEmpty
                       ? Image.memory(
                           base64Decode(appliance.base64Image),
@@ -454,7 +458,7 @@ class _ApplianceCard extends StatelessWidget {
 
                   // Seller row
                   FutureBuilder<DocumentSnapshot>(
-                    future: _fetchOwnerDetails(appliance.ownerId),
+                    future: _ownerFuture,
                     builder: (context, snapshot) {
                       if (snapshot.connectionState == ConnectionState.waiting) {
                         return const Row(
@@ -487,17 +491,70 @@ class _ApplianceCard extends StatelessWidget {
                       final userData =
                           snapshot.data!.data() as Map<String, dynamic>;
                       final ownerName = userData['name'] ?? 'Onbekend';
-                      // Assuming a default avatar or fetching from user data if available
-                      final ownerAvatarUrl =
-                          userData['avatarUrl'] ??
-                          'https://i.pravatar.cc/150?img=60'; // Placeholder
-
+                      ImageProvider? ownerPhoto;
+                      if (userData['photoBase64'] != null) {
+                        ownerPhoto = MemoryImage(
+                          base64Decode(userData['photoBase64']),
+                        );
+                      } else if (userData['photoUrl'] != null) {
+                        final String photoUrl = userData['photoUrl'];
+                        if (photoUrl.startsWith('base64:')) {
+                          ownerPhoto = MemoryImage(
+                            base64Decode(photoUrl.substring(7)),
+                          );
+                        } else if (photoUrl.isNotEmpty) {
+                          ownerPhoto = NetworkImage(photoUrl);
+                        }
+                      }
                       return Row(
                         children: [
-                          CircleAvatar(
-                            radius: 18,
-                            backgroundImage: NetworkImage(ownerAvatarUrl),
-                            backgroundColor: const Color(0xFFEEEEEE),
+                          SizedBox(
+                            width: 36,
+                            height: 36,
+                            child: ClipOval(
+                              child: ownerPhoto == null
+                                  ? Container(
+                                      color: const Color(0xFFEEEEEE),
+                                      alignment: Alignment.center,
+                                      child: Text(
+                                        ownerName.isNotEmpty
+                                            ? ownerName[0].toUpperCase()
+                                            : '?',
+                                        style: const TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w600,
+                                          color: Color(0xFF1A1A2E),
+                                        ),
+                                      ),
+                                    )
+                                  : ownerPhoto is MemoryImage
+                                  ? Image(
+                                      image: ownerPhoto,
+                                      width: 36,
+                                      height: 36,
+                                      fit: BoxFit.cover,
+                                    )
+                                  : Image.network(
+                                      (ownerPhoto as NetworkImage).url,
+                                      width: 36,
+                                      height: 36,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (_, __, ___) => Container(
+                                        color: const Color(0xFFEEEEEE),
+                                        alignment: Alignment.center,
+                                        child: Text(
+                                          ownerName.isNotEmpty
+                                              ? ownerName[0].toUpperCase()
+                                              : '?',
+                                          style: const TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w600,
+                                            color: Color(0xFF1A1A2E),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                            ),
                           ),
                           const SizedBox(width: 10),
                           Expanded(
@@ -521,7 +578,6 @@ class _ApplianceCard extends StatelessWidget {
                                     ),
                                     const SizedBox(width: 2),
                                     Text(
-                                      // Use appliance.address for location display
                                       appliance.address,
                                       style: const TextStyle(
                                         fontSize: 11,
