@@ -5,6 +5,7 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:http/http.dart' as http;
 
 import 'web/file_upload_stub.dart'
     if (dart.library.io) 'mobile/file_upload_io.dart';
@@ -23,18 +24,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final _picker = ImagePicker();
 
   late final TextEditingController _nameController;
-  late final TextEditingController _cityController;
+  late final TextEditingController _addressController;
 
   bool _isUploading = false;
   String? _photoUrl;
-  String? _city;
+  String? _address;
   String? _name;
 
   @override
   void initState() {
     super.initState();
     _nameController = TextEditingController();
-    _cityController = TextEditingController();
+    _addressController = TextEditingController();
     _loadProfile();
   }
 
@@ -51,14 +52,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
         setState(() => _photoUrl = data['photoUrl']);
       }
       setState(() {
-        _city = data['city'];
+        _address = data['address'] ?? data['city'];
         _name =
             data['name'] ??
             data['displayName'] ??
             _auth.currentUser?.displayName;
       });
       _nameController.text = _name ?? '';
-      _cityController.text = _city ?? '';
+      _addressController.text = _address ?? '';
     }
   }
 
@@ -305,7 +306,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               ),
                               const SizedBox(width: 3),
                               Text(
-                                _city ?? 'Locatie onbekend',
+                                _address ?? 'Locatie onbekend',
                                 style: const TextStyle(
                                   color: Color(0xFF85B7EB),
                                   fontSize: 12,
@@ -374,7 +375,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _editProfile() async {
     // Sync current values before opening
     _nameController.text = _name ?? '';
-    _cityController.text = _city ?? '';
+    _addressController.text = _address ?? '';
 
     await showModalBottomSheet(
       context: context,
@@ -419,9 +420,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             const SizedBox(height: 12),
             TextField(
-              controller: _cityController,
+              controller: _addressController,
               decoration: const InputDecoration(
-                labelText: 'Stad',
+                labelText: 'Adres',
                 prefixIcon: Icon(Icons.location_on_outlined),
                 border: OutlineInputBorder(),
               ),
@@ -440,16 +441,58 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   if (uid == null) return;
 
                   final newName = _nameController.text.trim();
-                  final newCity = _cityController.text.trim();
+                  final newAddress = _addressController.text.trim();
 
-                  await _firestore.collection('flutterUsers').doc(uid).set({
+                  double? lat;
+                  double? lng;
+
+                  if (newAddress.isNotEmpty) {
+                    String addressQuery = newAddress;
+                    if (!addressQuery.toLowerCase().contains('belgi') &&
+                        !addressQuery.toLowerCase().contains('nederland')) {
+                      addressQuery += ', België';
+                    }
+
+                    try {
+                      const apiKey = String.fromEnvironment(
+                        'GOOGLE_MAPS_API_KEY',
+                      );
+                      if (apiKey.isNotEmpty) {
+                        final url = Uri.parse(
+                          'https://maps.googleapis.com/maps/api/geocode/json?address=${Uri.encodeComponent(addressQuery)}&key=$apiKey',
+                        );
+                        final response = await http.get(url);
+                        final data = json.decode(response.body);
+
+                        if (data['status'] == 'OK' &&
+                            data['results'].isNotEmpty) {
+                          final location =
+                              data['results'][0]['geometry']['location'];
+                          lat = location['lat'];
+                          lng = location['lng'];
+                        }
+                      }
+                    } catch (e) {
+                      debugPrint("Geocoding fout: $e");
+                    }
+                  }
+
+                  Map<String, dynamic> updateData = {
                     'name': newName,
-                    'city': newCity,
-                  }, SetOptions(merge: true));
+                    'address': newAddress,
+                    'city': newAddress, // Voor achterwaartse compatibiliteit
+                    if (lat != null) 'lat': lat,
+                    if (lng != null) 'lng': lng,
+                  };
+
+                  await _firestore
+                      .collection('flutterUsers')
+                      .doc(uid)
+                      .set(updateData, SetOptions(merge: true));
 
                   setState(() {
                     _name = newName;
-                    _city = newCity;
+                    _address = newAddress;
                   });
 
                   if (context.mounted) Navigator.pop(context);
@@ -466,7 +509,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   void dispose() {
     _nameController.dispose();
-    _cityController.dispose();
+    _addressController.dispose();
     super.dispose();
   }
 }

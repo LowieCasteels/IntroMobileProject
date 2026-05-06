@@ -1,62 +1,7 @@
 import 'dart:convert'; // For base64Decode
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-
-// ── Data models ───────────────────────────────────────────────────────────────
-
-class Appliance {
-  final String id;
-  final String ownerId;
-  final String title;
-  final String description;
-  final String category;
-  final double price;
-  final String transactionType; // 'huur' or 'leen'
-  final String base64Image;
-  final bool isVisible;
-  final String address; // Added address field
-  final double? lat;
-  final double? lng;
-  final Timestamp createdAt;
-
-  Appliance({
-    required this.id,
-    required this.ownerId,
-    required this.title,
-    required this.description,
-    required this.category,
-    required this.price,
-    required this.transactionType,
-    required this.base64Image,
-    required this.isVisible,
-    required this.address, // Added address to constructor
-    this.lat,
-    this.lng,
-    required this.createdAt,
-  });
-
-  factory Appliance.fromFirestore(DocumentSnapshot doc) {
-    Map data = doc.data() as Map<String, dynamic>;
-    return Appliance(
-      id: doc.id,
-      ownerId: data['ownerId'] ?? '',
-      title: data['title'] ?? 'Geen titel',
-      description: data['description'] ?? 'Geen beschrijving',
-      category: data['category'] ?? 'Overig',
-      price: (data['price'] ?? 0.0).toDouble(),
-      transactionType: data['transactionType'] ?? 'leen',
-      base64Image: data['base64Image'] ?? '',
-      isVisible: data['isVisible'] ?? false,
-      address:
-          data['address'] ??
-          data['city'] ??
-          'Onbekend', // Retrieve address from Firestore
-      lat: (data['lat'] as num?)?.toDouble(),
-      lng: (data['lng'] as num?)?.toDouble(),
-      createdAt: data['createdAt'] ?? Timestamp.now(),
-    );
-  }
-}
+import 'package:flutter_project/models/appliance.dart';
 
 //HomeScreen
 
@@ -407,7 +352,7 @@ class _ApplianceCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 16,
               offset: const Offset(0, 4),
             ),
@@ -542,8 +487,6 @@ class _ApplianceCard extends StatelessWidget {
                       final userData =
                           snapshot.data!.data() as Map<String, dynamic>;
                       final ownerName = userData['name'] ?? 'Onbekend';
-                      final ownerAddress =
-                          userData['address'] ?? userData['city'] ?? 'Onbekend';
                       // Assuming a default avatar or fetching from user data if available
                       final ownerAvatarUrl =
                           userData['avatarUrl'] ??
@@ -640,7 +583,7 @@ class _Badge extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: color.withOpacity(0.4),
+            color: color.withValues(alpha: 0.4),
             blurRadius: 8,
             offset: const Offset(0, 3),
           ),
@@ -658,38 +601,6 @@ class _Badge extends StatelessWidget {
               fontSize: 11,
               fontWeight: FontWeight.w800,
               letterSpacing: 0.8,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _Spec extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  const _Spec(this.icon, this.label);
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF5F5F7),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 12, color: const Color(0xFF5A5A7A)),
-          const SizedBox(width: 4),
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 11,
-              color: Color(0xFF5A5A7A),
-              fontWeight: FontWeight.w600,
             ),
           ),
         ],
