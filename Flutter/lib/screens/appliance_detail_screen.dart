@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_project/models/appliance.dart';
+import 'package:flutter_project/models/request.dart';
 
 class ApplianceDetailScreen extends StatefulWidget {
   final Appliance appliance;
@@ -38,6 +39,61 @@ class _ApplianceDetailScreenState extends State<ApplianceDetailScreen> {
       return price.toInt().toString();
     }
     return price.toStringAsFixed(2);
+  }
+
+  Future<void> _handleRequestButton() async {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) return;
+
+    // Check if request already exists for this user+appliance
+    final existingRequest = await FirebaseFirestore.instance
+        .collection('requests')
+        .where('applianceId', isEqualTo: widget.appliance.id)
+        .where('requesterId', isEqualTo: currentUser.uid)
+        .where('status', whereIn: ['pending', 'accepted'])
+        .limit(1)
+        .get();
+
+    if (existingRequest.docs.isNotEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Je hebt al een verzoek voor dit item!'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    try {
+      await FirebaseFirestore.instance.collection('requests').add({
+        'applianceId': widget.appliance.id,
+        'ownerId': widget.appliance.ownerId,
+        'requesterId': currentUser.uid,
+        'status': 'pending',
+        'createdAt': Timestamp.now(),
+        'respondedAt': null,
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            widget.appliance.transactionType == 'huur'
+                ? 'Huurverzoek verzonden!'
+                : 'Leenverzoek verzonden!',
+          ),
+          backgroundColor: _primaryGreen,
+        ),
+      );
+
+      Navigator.of(context).pop();
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Fout bij verzenden verzoek'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   @override
@@ -417,19 +473,7 @@ class _ApplianceDetailScreenState extends State<ApplianceDetailScreen> {
                   ],
                 ),
                 child: ElevatedButton.icon(
-                  onPressed: () {
-                    // TODO: send rental/loan request to owner
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          isForRent
-                              ? 'Huurverzoek verzonden!'
-                              : 'Leenverzoek verzonden!',
-                        ),
-                        backgroundColor: _primaryGreen,
-                      ),
-                    );
-                  },
+                  onPressed: _handleRequestButton,
                   icon: Icon(
                     isForRent
                         ? Icons.payments_outlined
