@@ -137,9 +137,15 @@ class _MessagesScreenState extends State<MessagesScreen> {
                       (req) => _RequestCard(
                         request: req,
                         currentUserId: currentUser.uid,
-                        onAccept: () => _handleAccept(req),
-                        onDecline: () => _handleDecline(req),
-                        onCancel: () => _handleCancel(req),
+                        onAccept: currentUser.uid == req.ownerId
+                            ? () => _handleAccept(req)
+                            : null,
+                        onDecline: currentUser.uid == req.ownerId
+                            ? () => _handleDecline(req)
+                            : null,
+                        onCancel: currentUser.uid == req.requesterId
+                            ? () => _handleCancel(req)
+                            : null,
                         onTap: () => _navigateToChat(req),
                       ),
                     )
@@ -427,6 +433,22 @@ class _RequestCardState extends State<_RequestCard> {
                                   style: TextStyle(
                                     color: Colors.red,
                                     fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            // Show status message for requester when pending
+                            if (widget.onAccept == null &&
+                                widget.onCancel == null &&
+                                widget.onDecline == null)
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 8),
+                                child: Text(
+                                  'Verzoek gestuurd',
+                                  style: TextStyle(
+                                    color: Colors.grey[600],
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 14,
                                   ),
                                 ),
                               ),
