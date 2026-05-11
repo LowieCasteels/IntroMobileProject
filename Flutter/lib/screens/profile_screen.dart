@@ -188,23 +188,38 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Column(
-        children: [
-          _buildHeader(),
-          Expanded(
-            child: SingleChildScrollView(
-              child: Column(
-                children: [
-                  const SizedBox(height: 20),
-                  ElevatedButton(
-                    onPressed: () => _signOut(context),
-                    child: const Text('Uitloggen'),
-                  ),
+      body: DefaultTabController(
+        length: 2,
+        child: Column(
+          children: [
+            _buildHeader(),
+            Container(
+              color: Colors.white,
+              child: const TabBar(
+                labelColor: Color(0xFF1F8A6A),
+                unselectedLabelColor: Color(0xFF8A8A8A),
+                indicatorColor: Color(0xFF1F8A6A),
+                indicatorWeight: 3,
+                tabs: [
+                  Tab(text: 'Mijn items in gebruik'),
+                  Tab(text: 'Mijn reservaties'),
                 ],
               ),
             ),
-          ),
-        ],
+            Expanded(
+              child: const TabBarView(
+                children: [_MyItemsInUseTab(), _MyReservationsTab()],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 20),
+              child: ElevatedButton(
+                onPressed: () => _signOut(context),
+                child: const Text('Uitloggen'),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -512,4 +527,382 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _addressController.dispose();
     super.dispose();
   }
+}
+// ── Tab 1: Mijn items die door anderen gebruikt worden ─────────────────────────
+
+class _MyItemsInUseTab extends StatelessWidget {
+  const _MyItemsInUseTab();
+
+  @override
+  Widget build(BuildContext context) {
+    final uid = FirebaseAuth.instance.currentUser!.uid;
+
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('requests')
+          .where('ownerId', isEqualTo: uid)
+          .where('status', isEqualTo: 'accepted')
+          .snapshots(),
+      builder: (context, snap) {
+        if (snap.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        final docs = snap.data?.docs ?? [];
+
+        if (docs.isEmpty) {
+          return const _EmptyTab(
+            icon: Icons.outbound_outlined,
+            title: 'Nog geen items in gebruik',
+            subtitle: 'Geaccepteerde reservaties van anderen verschijnen hier.',
+          );
+        }
+
+        return ListView.separated(
+          padding: const EdgeInsets.all(16),
+          itemCount: docs.length,
+          separatorBuilder: (_, __) => const SizedBox(height: 10),
+          itemBuilder: (context, i) {
+            final requestData = docs[i].data() as Map<String, dynamic>;
+            return _RequestApplianceRow(
+              requestData: requestData,
+              badge: 'In gebruik',
+              badgeColor: const Color(0xFF2DBA8D),
+              subtitlePrefix: 'Gereserveerd door',
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+// ── Tab 2: Mijn reservaties bij anderen ─────────────────────────────────────────
+
+class _MyReservationsTab extends StatelessWidget {
+  const _MyReservationsTab();
+
+  @override
+  Widget build(BuildContext context) {
+    final uid = FirebaseAuth.instance.currentUser!.uid;
+
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('requests')
+          .where('requesterId', isEqualTo: uid)
+          .where('status', isEqualTo: 'accepted')
+          .snapshots(),
+      builder: (context, snap) {
+        if (snap.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        final docs = snap.data?.docs ?? [];
+
+        if (docs.isEmpty) {
+          return const _EmptyTab(
+            icon: Icons.handshake_outlined,
+            title: 'Nog geen reservaties',
+            subtitle:
+                'Als een eigenaar je verzoek accepteert, verschijnt het item hier.',
+          );
+        }
+
+        return ListView.separated(
+          padding: const EdgeInsets.all(16),
+          itemCount: docs.length,
+          separatorBuilder: (_, __) => const SizedBox(height: 10),
+          itemBuilder: (context, i) {
+            final requestData = docs[i].data() as Map<String, dynamic>;
+            return _RequestApplianceRow(
+              requestData: requestData,
+              badge: 'Geaccepteerd',
+              badgeColor: const Color(0xFF2DBA8D),
+              subtitlePrefix: 'Eigenaar',
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+class _RequestApplianceRow extends StatelessWidget {
+  final Map<String, dynamic> requestData;
+  final String badge;
+  final Color badgeColor;
+  final String subtitlePrefix;
+
+  const _RequestApplianceRow({
+    required this.requestData,
+    required this.badge,
+    required this.badgeColor,
+    required this.subtitlePrefix,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final applianceId = requestData['applianceId'] as String? ?? '';
+    final currentUserId = FirebaseAuth.instance.currentUser?.uid;
+    final ownerId = requestData['ownerId'] as String? ?? '';
+    final requesterId = requestData['requesterId'] as String? ?? '';
+    final otherUserId = ownerId == currentUserId ? requesterId : ownerId;
+
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: _loadRowData(applianceId: applianceId, otherUserId: otherUserId),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const SizedBox(
+            height: 90,
+            child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+          );
+        }
+
+        final rows = snapshot.data;
+        final rowData = rows != null && rows.isNotEmpty
+            ? rows[0]
+            : <String, dynamic>{};
+        final nameData = rows != null && rows.length > 1
+            ? rows[1]
+            : <String, dynamic>{};
+        final name = nameData['name'] as String? ?? 'Onbekend';
+        return _ApplianceRow(
+          data: rowData,
+          badge: badge,
+          badgeColor: badgeColor,
+          subtitle: '$subtitlePrefix: $name',
+        );
+      },
+    );
+  }
+
+  Future<List<Map<String, dynamic>>> _loadRowData({
+    required String applianceId,
+    required String otherUserId,
+  }) async {
+    final applianceDoc = await FirebaseFirestore.instance
+        .collection('appliances')
+        .doc(applianceId)
+        .get();
+    final userDoc = await FirebaseFirestore.instance
+        .collection('flutterUsers')
+        .doc(otherUserId)
+        .get();
+
+    final applianceData = applianceDoc.data() ?? <String, dynamic>{};
+    return [
+      {
+        'title': applianceData['title'] ?? 'Item',
+        'base64Image': applianceData['base64Image'] ?? '',
+        'address': applianceData['address'] ?? '',
+      },
+      {'name': userDoc.data()?['name'] ?? userDoc.data()?['displayName'] ?? ''},
+    ];
+  }
+}
+
+// ── Gedeelde rij-widget ────────────────────────────────────────────────────────
+
+class _ApplianceRow extends StatelessWidget {
+  final Map<String, dynamic> data;
+  final String badge;
+  final Color badgeColor;
+  final String subtitle;
+
+  const _ApplianceRow({
+    required this.data,
+    required this.badge,
+    required this.badgeColor,
+    required this.subtitle,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final title = data['title'] as String? ?? 'Item';
+    final image = data['base64Image'] as String? ?? '';
+    final address = data['address'] as String? ?? '';
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          // Afbeelding
+          ClipRRect(
+            borderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(16),
+              bottomLeft: Radius.circular(16),
+            ),
+            child: image.isNotEmpty
+                ? Image.memory(
+                    base64Decode(image),
+                    width: 90,
+                    height: 90,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => _placeholder(),
+                  )
+                : _placeholder(),
+          ),
+          const SizedBox(width: 12),
+          // Info
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF1A1A2E),
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Color(0xFF8A8A8A),
+                    ),
+                  ),
+                  if (address.isNotEmpty) ...[
+                    const SizedBox(height: 2),
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.location_on_outlined,
+                          size: 11,
+                          color: Color(0xFF8A8A8A),
+                        ),
+                        const SizedBox(width: 2),
+                        Expanded(
+                          child: Text(
+                            address,
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: Color(0xFF8A8A8A),
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+          // Badge
+          Container(
+            margin: const EdgeInsets.only(right: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            decoration: BoxDecoration(
+              color: badgeColor.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              badge,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: badgeColor,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _placeholder() {
+    return Container(
+      width: 90,
+      height: 90,
+      color: const Color(0xFFEEEEEE),
+      child: const Icon(Icons.devices_other, color: Color(0xFFCCCCCC)),
+    );
+  }
+}
+
+// ── Lege staat per tab ─────────────────────────────────────────────────────────
+
+class _EmptyTab extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+
+  const _EmptyTab({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 56, color: Colors.grey[300]),
+            const SizedBox(height: 14),
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey[500],
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 6),
+            Text(
+              subtitle,
+              style: TextStyle(fontSize: 13, color: Colors.grey[400]),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Sticky TabBar delegate ─────────────────────────────────────────────────────
+
+class _StickyTabBarDelegate extends SliverPersistentHeaderDelegate {
+  final TabBar tabBar;
+  const _StickyTabBarDelegate(this.tabBar);
+
+  @override
+  double get minExtent => tabBar.preferredSize.height;
+
+  @override
+  double get maxExtent => tabBar.preferredSize.height;
+
+  @override
+  Widget build(
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) {
+    return Container(color: Colors.white, child: tabBar);
+  }
+
+  @override
+  bool shouldRebuild(_StickyTabBarDelegate oldDelegate) => false;
 }
