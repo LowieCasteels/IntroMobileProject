@@ -333,6 +333,7 @@ class _ApplianceCard extends StatefulWidget {
 
 class _ApplianceCardState extends State<_ApplianceCard> {
   late Future<DocumentSnapshot> _ownerFuture;
+  late Future<bool> _isInUseFuture;
 
   @override
   void initState() {
@@ -341,6 +342,22 @@ class _ApplianceCardState extends State<_ApplianceCard> {
         .collection('flutterUsers')
         .doc(widget.appliance.ownerId)
         .get();
+    _isInUseFuture = _checkIfInUse();
+  }
+
+  Future<bool> _checkIfInUse() async {
+    try {
+      final querySnapshot = await FirebaseFirestore.instance
+          .collection('requests')
+          .where('applianceId', isEqualTo: widget.appliance.id)
+          .where('status', isEqualTo: 'accepted')
+          .limit(1)
+          .get();
+      return querySnapshot.docs.isNotEmpty;
+    } catch (e) {
+      debugPrint('Error checking if item in use: $e');
+      return false;
+    }
   }
 
   @override
@@ -391,12 +408,25 @@ class _ApplianceCardState extends State<_ApplianceCard> {
                 Positioned(
                   top: 12,
                   left: 12,
-                  child: _Badge(
-                    label: isForRent ? 'Te huur' : 'Te leen',
-                    icon: isForRent
-                        ? Icons.payments
-                        : Icons.handshake, // Changed icon for 'Te leen'
-                    color: const Color(0xFF2ECC71),
+                  child: FutureBuilder<bool>(
+                    future: _isInUseFuture,
+                    builder: (context, snapshot) {
+                      final isInUse = snapshot.data ?? false;
+                      if (isInUse) {
+                        return _Badge(
+                          label: 'In gebruik',
+                          icon: Icons.check_circle,
+                          color: Colors.red,
+                        );
+                      }
+                      return _Badge(
+                        label: isForRent ? 'Te huur' : 'Te leen',
+                        icon: isForRent
+                            ? Icons.payments
+                            : Icons.handshake,
+                        color: const Color(0xFF2ECC71),
+                      );
+                    },
                   ),
                 ),
               ],
