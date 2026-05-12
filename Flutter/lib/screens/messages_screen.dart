@@ -6,6 +6,7 @@ import 'package:flutter_project/models/request.dart';
 import 'package:flutter_project/models/appliance.dart';
 import 'package:flutter_project/screens/request_helpers.dart';
 import 'package:flutter_project/screens/chat_screen.dart';
+import 'package:flutter_project/services/notification_service.dart';
 
 class MessagesScreen extends StatefulWidget {
   const MessagesScreen({super.key});
@@ -228,10 +229,54 @@ class _MessagesScreenState extends State<MessagesScreen> {
 
   Future<void> _handleAccept(Request request) async {
     try {
+      final applianceDoc = await FirebaseFirestore.instance
+          .collection('appliances')
+          .doc(request.applianceId)
+          .get();
+      final applianceTitle = applianceDoc.data()?['title'] ?? 'het item';
+
       await FirebaseFirestore.instance
           .collection('requests')
           .doc(request.id)
           .update({'status': 'accepted', 'respondedAt': Timestamp.now()});
+
+      // Stuur notificatie naar de aanvrager
+      await NotificationService().createNotification(
+        userId: request.requesterId,
+        title: 'Je verzoek is geaccepteerd!',
+        body: 'Je verzoek voor "$applianceTitle" is geaccepteerd.',
+        requestId: request.id,
+      );
+
+      if (request.startDate != null && request.endDate != null) {
+        final notificationService = NotificationService();
+
+        final pickupDate = request.startDate!.toDate();
+        final pickupTime = DateTime(
+          pickupDate.year,
+          pickupDate.month,
+          pickupDate.day,
+          9,
+        );
+        await notificationService.schedulePickupReminder(
+          request.id,
+          applianceTitle,
+          pickupTime,
+        );
+
+        final returnDate = request.endDate!.toDate();
+        final returnTime = DateTime(
+          returnDate.year,
+          returnDate.month,
+          returnDate.day,
+          9,
+        );
+        await notificationService.scheduleReturnReminder(
+          request.id,
+          applianceTitle,
+          returnTime,
+        );
+      }
     } catch (e) {
       ScaffoldMessenger.of(
         context,
@@ -241,10 +286,25 @@ class _MessagesScreenState extends State<MessagesScreen> {
 
   Future<void> _handleDecline(Request request) async {
     try {
+      // Stuur notificatie naar de aanvrager
+      final applianceDoc = await FirebaseFirestore.instance
+          .collection('appliances')
+          .doc(request.applianceId)
+          .get();
+      final applianceTitle =
+          applianceDoc.data()?['title'] ?? 'het aangevraagde item';
+
+      await NotificationService().createNotification(
+        userId: request.requesterId,
+        title: 'Verzoek geweigerd',
+        body: 'Helaas, je verzoek voor "$applianceTitle" is geweigerd.',
+        requestId: request.id,
+      );
       await FirebaseFirestore.instance
           .collection('requests')
           .doc(request.id)
           .delete();
+      await NotificationService().cancelNotificationsForRequest(request.id);
     } catch (e) {
       ScaffoldMessenger.of(
         context,
@@ -254,10 +314,25 @@ class _MessagesScreenState extends State<MessagesScreen> {
 
   Future<void> _handleCancel(Request request) async {
     try {
+      // Stuur notificatie naar de eigenaar
+      final applianceDoc = await FirebaseFirestore.instance
+          .collection('appliances')
+          .doc(request.applianceId)
+          .get();
+      final applianceTitle =
+          applianceDoc.data()?['title'] ?? 'het aangevraagde item';
+
+      await NotificationService().createNotification(
+        userId: request.ownerId,
+        title: 'Verzoek geannuleerd',
+        body: 'Het verzoek voor "$applianceTitle" is geannuleerd.',
+        requestId: request.id,
+      );
       await FirebaseFirestore.instance
           .collection('requests')
           .doc(request.id)
           .delete();
+      await NotificationService().cancelNotificationsForRequest(request.id);
     } catch (e) {
       ScaffoldMessenger.of(
         context,

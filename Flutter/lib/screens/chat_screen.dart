@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_project/models/request.dart';
 import 'package:flutter_project/models/appliance.dart';
+import 'package:flutter_project/services/notification_service.dart';
 
 class ChatScreen extends StatefulWidget {
   final Request request;
@@ -73,6 +74,24 @@ class _ChatScreenState extends State<ChatScreen> {
             'text': text,
             'timestamp': Timestamp.now(),
           });
+
+      // Stuur een notificatie naar de ontvanger
+      final otherUserId = currentUser.uid == widget.request.ownerId
+          ? widget.request.requesterId
+          : widget.request.ownerId;
+
+      final senderDoc = await FirebaseFirestore.instance
+          .collection('flutterUsers')
+          .doc(currentUser.uid)
+          .get();
+      final senderName = senderDoc.data()?['name'] ?? 'Iemand';
+
+      await NotificationService().createNotification(
+        userId: otherUserId,
+        title: 'Nieuw bericht van $senderName',
+        body: text,
+        requestId: widget.request.id,
+      );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Fout bij verzenden bericht')),

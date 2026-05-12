@@ -9,6 +9,7 @@ import 'package:flutter_project/screens/map_screen.dart';
 import 'package:flutter_project/screens/add_product_screen.dart';
 import 'package:go_router/go_router.dart';
 import 'firebase_options.dart';
+import 'package:flutter_project/services/notification_service.dart';
 // import 'auth/login_screen.dart';
 import 'auth/register_screen.dart';
 
@@ -31,11 +32,9 @@ void _loadGoogleMapsScript() {
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  // DevicePreview(
-  //   enabled: !kReleaseMode,
-  //   builder: (context) => MyApp(), // Wrap your app
-  // );
-  // runApp(const MyApp());
+  await NotificationService().init();
+  await NotificationService().requestPermissions();
+
   _loadGoogleMapsScript();
   runApp(
     DevicePreview(

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_project/models/request.dart';
 
+import '../services/notification_service.dart';
+
 const Color _primaryGreen = Color(0xFF2DBA8D);
 
 Future<void> markAsReturned(BuildContext context, String requestId) async {
@@ -10,6 +12,9 @@ Future<void> markAsReturned(BuildContext context, String requestId) async {
         .collection('requests')
         .doc(requestId)
         .update({'status': 'returned'});
+
+    await NotificationService().cancelNotificationsForRequest(requestId);
+
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(

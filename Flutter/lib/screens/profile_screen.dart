@@ -6,7 +6,11 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:timezone/timezone.dart' as tz;
 import 'package:flutter_project/screens/request_helpers.dart';
+import 'package:flutter_project/services/notification_service.dart';
+import 'package:flutter_project/screens/notifications_screen.dart';
 
 import 'web/file_upload_stub.dart'
     if (dart.library.io) 'mobile/file_upload_io.dart';
@@ -33,6 +37,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String? _name;
   double _averageRating = 0.0;
   int _ratingCount = 0;
+  Stream<int>? _unreadNotificationsStream;
 
   @override
   void initState() {
@@ -40,6 +45,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _nameController = TextEditingController();
     _addressController = TextEditingController();
     _loadProfile();
+    _setupNotificationsStream();
   }
 
   Future<void> _loadProfile() async {
@@ -69,6 +75,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
       });
       _nameController.text = _name ?? '';
       _addressController.text = _address ?? '';
+    }
+  }
+
+  void _setupNotificationsStream() {
+    final uid = _auth.currentUser?.uid;
+    if (uid == null) return;
+    if (mounted) {
+      setState(() {
+        _unreadNotificationsStream = _firestore
+            .collection('flutterUsers')
+            .doc(uid)
+            .collection('notifications')
+            .where('isRead', isEqualTo: false)
+            .snapshots()
+            .map((snapshot) => snapshot.docs.length);
+      });
     }
   }
 
@@ -173,6 +195,41 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  Future<void> _sendTestNotification() async {
+    final notificationService = NotificationService();
+    await notificationService.flutterLocalNotificationsPlugin.zonedSchedule(
+      999, // Unieke ID voor de test notificatie
+      'Test Notificatie',
+      'Als je dit ziet, werken de notificaties!',
+      tz.TZDateTime.now(tz.local).add(const Duration(seconds: 5)),
+      const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'test_channel',
+          'Test Notificaties',
+          channelDescription: 'Kanaal voor testnotificaties',
+          importance: Importance.max,
+          priority: Priority.high,
+        ),
+        iOS: DarwinNotificationDetails(
+          presentAlert: true,
+          presentBadge: true,
+          presentSound: true,
+        ),
+      ),
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      uiLocalNotificationDateInterpretation:
+          UILocalNotificationDateInterpretation.absoluteTime,
+    );
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Test notificatie ingepland over 5 seconden.'),
+        ),
+      );
+    }
+  }
+
   Future<void> _signOut(BuildContext context) async {
     try {
       await _auth.signOut();
@@ -222,9 +279,30 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             Padding(
               padding: const EdgeInsets.only(bottom: 20),
-              child: ElevatedButton(
-                onPressed: () => _signOut(context),
-                child: const Text('Uitloggen'),
+              child: Column(
+                children: [
+                  ElevatedButton(
+                    onPressed: _sendTestNotification,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blueGrey,
+                    ),
+                    child: const Text(
+                      'Test Notificatie (5s)',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  ElevatedButton(
+                    onPressed: () => _signOut(context),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red[400],
+                    ),
+                    child: const Text(
+                      'Uitloggen',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
@@ -243,8 +321,45 @@ class _ProfileScreenState extends State<ProfileScreen> {
             child: Column(
               children: [
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
+                    const SizedBox(width: 48), // Placeholder for symmetry
+                    const Spacer(),
+                    StreamBuilder<int>(
+                      stream: _unreadNotificationsStream,
+                      builder: (context, snapshot) {
+                        final count = snapshot.data ?? 0;
+                        return Stack(
+                          alignment: Alignment.topRight,
+                          children: [
+                            IconButton(
+                              icon: const Icon(
+                                Icons.notifications_outlined,
+                                color: Color(0xFFB5D4F4),
+                                size: 22,
+                              ),
+                              onPressed: () => Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => const NotificationsScreen(),
+                                ),
+                              ),
+                            ),
+                            if (count > 0)
+                              CircleAvatar(
+                                radius: 8,
+                                backgroundColor: Colors.red,
+                                child: Text(
+                                  count.toString(),
+                                  style: const TextStyle(
+                                    fontSize: 10,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        );
+                      },
+                    ),
                     IconButton(
                       icon: const Icon(
                         Icons.edit_outlined,

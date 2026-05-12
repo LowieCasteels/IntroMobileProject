@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_project/models/appliance.dart';
 import 'package:intl/intl.dart';
+import 'package:flutter_project/services/notification_service.dart';
 
 class ApplianceDetailScreen extends StatefulWidget {
   final Appliance appliance;
@@ -110,16 +111,32 @@ class _ApplianceDetailScreenState extends State<ApplianceDetailScreen> {
     setState(() => _isLoading = true);
 
     try {
-      await FirebaseFirestore.instance.collection('requests').add({
-        'applianceId': widget.appliance.id,
-        'ownerId': widget.appliance.ownerId,
-        'requesterId': currentUser.uid,
-        'status': 'pending',
-        'startDate': Timestamp.fromDate(_selectedDateRange!.start),
-        'endDate': Timestamp.fromDate(_selectedDateRange!.end),
-        'createdAt': Timestamp.now(),
-        'respondedAt': null,
-      });
+      final newRequestRef = await FirebaseFirestore.instance
+          .collection('requests')
+          .add({
+            'applianceId': widget.appliance.id,
+            'ownerId': widget.appliance.ownerId,
+            'requesterId': currentUser.uid,
+            'status': 'pending',
+            'startDate': Timestamp.fromDate(_selectedDateRange!.start),
+            'endDate': Timestamp.fromDate(_selectedDateRange!.end),
+            'createdAt': Timestamp.now(),
+            'respondedAt': null,
+          });
+
+      // Stuur een notificatie naar de eigenaar
+      final requesterDoc = await FirebaseFirestore.instance
+          .collection('flutterUsers')
+          .doc(currentUser.uid)
+          .get();
+      final requesterName = requesterDoc.data()?['name'] ?? 'Iemand';
+
+      await NotificationService().createNotification(
+        userId: widget.appliance.ownerId,
+        title: 'Nieuw verzoek voor "${widget.appliance.title}"',
+        body: '$requesterName wil je item huren of lenen.',
+        requestId: newRequestRef.id,
+      );
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
