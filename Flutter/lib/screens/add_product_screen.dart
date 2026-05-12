@@ -107,7 +107,6 @@ class _AddProductScreenState extends State<AddProductScreen> {
           ),
         );
       }
-      print('Error picking image: $e');
     }
   }
 

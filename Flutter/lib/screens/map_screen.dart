@@ -176,7 +176,6 @@ class MapScreenState extends State<MapScreen> {
                 snippet: appliance.address,
                 onTap: () {
                   // TODO: Navigate to appliance detail screen
-                  print('Tapped on ${appliance.title}');
                 },
               ),
             ),
@@ -207,7 +206,6 @@ class MapScreenState extends State<MapScreen> {
         });
       }
     } catch (e) {
-      print("Error fetching appliances for map: $e");
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Kon toestellen niet laden op de kaart: $e')),

@@ -15,6 +15,7 @@ class Request {
   final String? requesterReview;
   final Timestamp createdAt;
   final Timestamp? respondedAt;
+  final String paymentStatus; // 'pending', 'paid'
 
   Request({
     required this.id,
@@ -30,10 +31,11 @@ class Request {
     this.requesterReview,
     required this.createdAt,
     this.respondedAt,
+    this.paymentStatus = 'pending',
   });
 
   factory Request.fromFirestore(DocumentSnapshot doc) {
-    Map data = doc.data() as Map<String, dynamic>;
+    final data = doc.data() as Map<String, dynamic>;
     return Request(
       id: doc.id,
       applianceId: data['applianceId'] ?? '',
@@ -48,6 +50,7 @@ class Request {
       requesterReview: data['requesterReview'],
       createdAt: data['createdAt'] ?? Timestamp.now(),
       respondedAt: data['respondedAt'],
+      paymentStatus: data['paymentStatus'] ?? 'pending',
     );
   }
 
@@ -65,6 +68,7 @@ class Request {
       'requesterReview': requesterReview,
       'createdAt': createdAt,
       'respondedAt': respondedAt,
+      'paymentStatus': paymentStatus,
     };
   }
 }

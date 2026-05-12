@@ -355,7 +355,6 @@ class _ApplianceCardState extends State<_ApplianceCard> {
           .get();
       return querySnapshot.docs.isNotEmpty;
     } catch (e) {
-      debugPrint('Error checking if item in use: $e');
       return false;
     }
   }

@@ -214,3 +214,131 @@ class _ReviewDialogState extends State<_ReviewDialog> {
     );
   }
 }
+
+void showPaymentDialog({
+  required BuildContext context,
+  required String requestId,
+}) {
+  showDialog(
+    context: context,
+    builder: (ctx) => _PaymentDialog(requestId: requestId),
+  );
+}
+
+class _PaymentDialog extends StatefulWidget {
+  final String requestId;
+
+  const _PaymentDialog({required this.requestId});
+
+  @override
+  State<_PaymentDialog> createState() => _PaymentDialogState();
+}
+
+class _PaymentDialogState extends State<_PaymentDialog> {
+  bool _isProcessing = false;
+  bool _paymentInitiated = false;
+
+  Future<void> _processPayment() async {
+    setState(() => _isProcessing = true);
+
+    // Simulate payment processing
+    await Future.delayed(const Duration(milliseconds: 500));
+
+    try {
+      await FirebaseFirestore.instance
+          .collection('requests')
+          .doc(widget.requestId)
+          .update({'paymentStatus': 'paid'});
+
+      if (mounted) {
+        setState(() {
+          _isProcessing = false;
+          _paymentInitiated = true;
+        });
+
+        // Auto close dialog after 1 second
+        await Future.delayed(const Duration(seconds: 1));
+        if (mounted) {
+          Navigator.of(context).pop();
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isProcessing = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Fout bij betaling: ${e.toString()}')),
+        );
+      }
+    }
+  }
+
+  Future<void> _cancelPayment() async {
+    Navigator.of(context).pop();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_paymentInitiated) {
+      return AlertDialog(
+        title: const Text('Betaling voltooid'),
+        content: const Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.check_circle, color: Color(0xFF2DBA8D), size: 64),
+            SizedBox(height: 16),
+            Text(
+              'Betaald',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF2DBA8D),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF2DBA8D),
+            ),
+            child: const Text('OK', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      );
+    }
+
+    return AlertDialog(
+      title: const Text('Betaaling'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text('Doorgaan met betaling?'),
+          const SizedBox(height: 16),
+          if (_isProcessing)
+            const SizedBox(
+              width: 40,
+              height: 40,
+              child: CircularProgressIndicator(),
+            ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: _isProcessing ? null : _cancelPayment,
+          child: const Text('Annuleren', style: TextStyle(color: Colors.red)),
+        ),
+        ElevatedButton(
+          onPressed: _isProcessing ? null : _processPayment,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF2DBA8D),
+          ),
+          child: Text(
+            _isProcessing ? 'Verwerken...' : 'Doorgaan',
+            style: const TextStyle(color: Colors.white),
+          ),
+        ),
+      ],
+    );
+  }
+}

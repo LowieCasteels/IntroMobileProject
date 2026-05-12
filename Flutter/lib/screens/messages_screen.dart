@@ -187,6 +187,12 @@ class _MessagesScreenState extends State<MessagesScreen> {
                             ? () => _handleCancel(req)
                             : null,
                         onTap: () => _navigateToChat(req),
+                        onPay: currentUser.uid == req.requesterId
+                            ? () => showPaymentDialog(
+                                context: context,
+                                requestId: req.id,
+                              )
+                            : null,
                       ),
                     )
                     .toList(),
@@ -214,7 +220,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
                           request: req,
                           currentUserId: currentUser.uid,
                         ),
-                        onCancel: null, // Cannot cancel completed
+                        onCancel: null,
                         onTap: () => _navigateToChat(req),
                       ),
                     )
@@ -355,6 +361,7 @@ class _RequestCard extends StatefulWidget {
   final VoidCallback? onMarkAsReturned;
   final VoidCallback? onCancel;
   final VoidCallback? onReview;
+  final VoidCallback? onPay;
   final VoidCallback onTap;
 
   const _RequestCard({
@@ -365,6 +372,7 @@ class _RequestCard extends StatefulWidget {
     this.onDecline,
     this.onMarkAsReturned,
     this.onReview,
+    this.onPay,
     required this.onCancel,
     required this.onTap,
   });
@@ -433,6 +441,8 @@ class _RequestCardState extends State<_RequestCard> {
             final hasReviewed =
                 (isOwner && widget.request.requesterRating != null) ||
                 (!isOwner && widget.request.ownerRating != null);
+            final isRental = appliance.transactionType == 'huur';
+            final isPaid = widget.request.paymentStatus == 'paid';
 
             return Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -450,14 +460,12 @@ class _RequestCardState extends State<_RequestCard> {
                 ),
                 child: Column(
                   children: [
-                    // Item preview + info
                     InkWell(
                       onTap: widget.onTap,
                       child: Padding(
                         padding: const EdgeInsets.all(12),
                         child: Row(
                           children: [
-                            // Item image
                             Container(
                               width: 60,
                               height: 60,
@@ -478,7 +486,6 @@ class _RequestCardState extends State<_RequestCard> {
                                   : _buildImagePlaceholder(),
                             ),
                             const SizedBox(width: 12),
-                            // Item details
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -506,7 +513,7 @@ class _RequestCardState extends State<_RequestCard> {
                                     ),
                                   ),
                                   const SizedBox(height: 4),
-                                  if (appliance.transactionType == 'huur')
+                                  if (isRental)
                                     Text(
                                       '€${appliance.price.toStringAsFixed(0)}/dag',
                                       style: const TextStyle(
@@ -534,12 +541,12 @@ class _RequestCardState extends State<_RequestCard> {
                         ),
                       ),
                     ),
-                    // Action buttons
                     if (widget.onAccept != null ||
                         widget.onDecline != null ||
                         widget.onCancel != null ||
                         widget.onMarkAsReturned != null ||
-                        canReview)
+                        canReview ||
+                        (widget.onPay != null && isRental))
                       Padding(
                         padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
                         child: Row(
@@ -556,7 +563,8 @@ class _RequestCardState extends State<_RequestCard> {
                                   ),
                                 ),
                               ),
-                            const SizedBox(width: 8),
+                            if (widget.onDecline != null)
+                              const SizedBox(width: 8),
                             if (widget.onAccept != null)
                               ElevatedButton(
                                 onPressed: widget.onAccept,
@@ -568,6 +576,8 @@ class _RequestCardState extends State<_RequestCard> {
                                   style: TextStyle(color: Colors.white),
                                 ),
                               ),
+                            if (widget.onAccept != null)
+                              const SizedBox(width: 8),
                             if (widget.onMarkAsReturned != null)
                               ElevatedButton(
                                 onPressed: widget.onMarkAsReturned,
@@ -577,6 +587,35 @@ class _RequestCardState extends State<_RequestCard> {
                                 child: const Text(
                                   'Markeer als geretourneerd',
                                   style: TextStyle(color: Colors.white),
+                                ),
+                              ),
+                            if (widget.onMarkAsReturned != null)
+                              const SizedBox(width: 8),
+                            if (widget.onPay != null && isRental && !isPaid)
+                              ElevatedButton(
+                                onPressed: widget.onPay,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.blue[600],
+                                ),
+                                child: const Text(
+                                  'Betalen',
+                                  style: TextStyle(color: Colors.white),
+                                ),
+                              ),
+                            if (widget.onPay != null && isRental && !isPaid)
+                              const SizedBox(width: 8),
+                            if (isRental && isPaid)
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                ),
+                                child: Text(
+                                  'Betaald',
+                                  style: TextStyle(
+                                    color: Colors.green[700],
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 14,
+                                  ),
                                 ),
                               ),
                             if (canReview)
@@ -590,6 +629,7 @@ class _RequestCardState extends State<_RequestCard> {
                                   style: TextStyle(color: Colors.white),
                                 ),
                               ),
+                            if (canReview) const SizedBox(width: 8),
                             if (widget.onCancel != null &&
                                 widget.onAccept == null)
                               TextButton(
@@ -602,11 +642,11 @@ class _RequestCardState extends State<_RequestCard> {
                                   ),
                                 ),
                               ),
-                            // Show status message for requester when pending
                             if (widget.onAccept == null &&
                                 widget.onCancel == null &&
                                 widget.onDecline == null &&
                                 widget.onMarkAsReturned == null &&
+                                widget.onPay == null &&
                                 !canReview &&
                                 !hasReviewed)
                               Padding(

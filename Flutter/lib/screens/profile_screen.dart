@@ -6,10 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:timezone/timezone.dart' as tz;
 import 'package:flutter_project/screens/request_helpers.dart';
-import 'package:flutter_project/services/notification_service.dart';
 import 'package:flutter_project/screens/notifications_screen.dart';
 
 import 'web/file_upload_stub.dart'
@@ -195,41 +192,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  Future<void> _sendTestNotification() async {
-    final notificationService = NotificationService();
-    await notificationService.flutterLocalNotificationsPlugin.zonedSchedule(
-      999, // Unieke ID voor de test notificatie
-      'Test Notificatie',
-      'Als je dit ziet, werken de notificaties!',
-      tz.TZDateTime.now(tz.local).add(const Duration(seconds: 5)),
-      const NotificationDetails(
-        android: AndroidNotificationDetails(
-          'test_channel',
-          'Test Notificaties',
-          channelDescription: 'Kanaal voor testnotificaties',
-          importance: Importance.max,
-          priority: Priority.high,
-        ),
-        iOS: DarwinNotificationDetails(
-          presentAlert: true,
-          presentBadge: true,
-          presentSound: true,
-        ),
-      ),
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      uiLocalNotificationDateInterpretation:
-          UILocalNotificationDateInterpretation.absoluteTime,
-    );
-
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Test notificatie ingepland over 5 seconden.'),
-        ),
-      );
-    }
-  }
-
   Future<void> _signOut(BuildContext context) async {
     try {
       await _auth.signOut();
@@ -278,20 +240,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ),
             Padding(
-              padding: const EdgeInsets.only(bottom: 20),
+              padding: const EdgeInsets.only(bottom: 35),
               child: Column(
                 children: [
-                  ElevatedButton(
-                    onPressed: _sendTestNotification,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blueGrey,
-                    ),
-                    child: const Text(
-                      'Test Notificatie (5s)',
-                      style: TextStyle(color: Colors.white),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
                   ElevatedButton(
                     onPressed: () => _signOut(context),
                     style: ElevatedButton.styleFrom(
@@ -617,7 +568,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         }
                       }
                     } catch (e) {
-                      debugPrint("Geocoding fout: $e");
+                      // Geocoding mislukt, maar profiel opslaan mag doorgaan.
                     }
                   }
 
