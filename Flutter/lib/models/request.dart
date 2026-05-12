@@ -7,6 +7,8 @@ class Request {
   final String requesterId;
   final String
   status; // 'pending', 'accepted', 'declined', 'cancelled', 'returned'
+  final Timestamp? startDate;
+  final Timestamp? endDate;
   final Timestamp createdAt;
   final Timestamp? respondedAt;
 
@@ -16,6 +18,8 @@ class Request {
     required this.ownerId,
     required this.requesterId,
     required this.status,
+    this.startDate,
+    this.endDate,
     required this.createdAt,
     this.respondedAt,
   });
@@ -28,6 +32,8 @@ class Request {
       ownerId: data['ownerId'] ?? '',
       requesterId: data['requesterId'] ?? '',
       status: data['status'] ?? 'pending',
+      startDate: data['startDate'],
+      endDate: data['endDate'],
       createdAt: data['createdAt'] ?? Timestamp.now(),
       respondedAt: data['respondedAt'],
     );
@@ -39,6 +45,8 @@ class Request {
       'ownerId': ownerId,
       'requesterId': requesterId,
       'status': status,
+      'startDate': startDate,
+      'endDate': endDate,
       'createdAt': createdAt,
       'respondedAt': respondedAt,
     };

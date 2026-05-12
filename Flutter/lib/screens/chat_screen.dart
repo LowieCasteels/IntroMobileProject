@@ -94,10 +94,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
         if (!applianceSnapshot.hasData || !applianceSnapshot.data!.exists) {
           return Scaffold(
-            appBar: AppBar(
-              title: const Text('Chat'),
-              backgroundColor: _darkBg,
-            ),
+            appBar: AppBar(title: const Text('Chat'), backgroundColor: _darkBg),
             body: const Center(child: Text('Item niet gevonden')),
           );
         }
@@ -107,10 +104,10 @@ class _ChatScreenState extends State<ChatScreen> {
         return FutureBuilder<DocumentSnapshot>(
           future: _otherUserFuture,
           builder: (context, userSnapshot) {
-            final otherUserName = userSnapshot.hasData &&
-                    userSnapshot.data!.exists
+            final otherUserName =
+                userSnapshot.hasData && userSnapshot.data!.exists
                 ? (userSnapshot.data!.data() as Map<String, dynamic>)['name'] ??
-                    'Onbekend'
+                      'Onbekend'
                 : 'Onbekend';
 
             return Scaffold(
@@ -182,7 +179,7 @@ class _ChatScreenState extends State<ChatScreen> {
                                 ),
                               ),
                               const SizedBox(height: 6),
-                              if (appliance.transactionType == 'huur')
+                              if (appliance.transactionType == 'huur') ...[
                                 Text(
                                   '€${appliance.price.toStringAsFixed(0)}/dag',
                                   style: const TextStyle(
@@ -190,8 +187,8 @@ class _ChatScreenState extends State<ChatScreen> {
                                     fontWeight: FontWeight.w600,
                                     color: _primaryGreen,
                                   ),
-                                )
-                              else
+                                ),
+                              ] else
                                 const Text(
                                   'Te leen',
                                   style: TextStyle(
@@ -200,6 +197,17 @@ class _ChatScreenState extends State<ChatScreen> {
                                     color: _primaryGreen,
                                   ),
                                 ),
+                              if (widget.request.startDate != null &&
+                                  widget.request.endDate != null) ...[
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Periode: ${widget.request.startDate!.toDate().day}/${widget.request.startDate!.toDate().month} - ${widget.request.endDate!.toDate().day}/${widget.request.endDate!.toDate().month}',
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey,
+                                  ),
+                                ),
+                              ],
                             ],
                           ),
                         ),
@@ -242,27 +250,31 @@ class _ChatScreenState extends State<ChatScreen> {
                         }
 
                         final messages = snapshot.data!.docs
-                            .map((doc) => {
-                                  'id': doc.id,
-                                  'senderId': doc['senderId'],
-                                  'text': doc['text'],
-                                  'timestamp': (doc['timestamp'] as Timestamp)
-                                      .toDate(),
-                                })
+                            .map(
+                              (doc) => {
+                                'id': doc.id,
+                                'senderId': doc['senderId'],
+                                'text': doc['text'],
+                                'timestamp': (doc['timestamp'] as Timestamp)
+                                    .toDate(),
+                              },
+                            )
                             .toList();
 
-                        final currentUserId = FirebaseAuth.instance.currentUser!.uid;
+                        final currentUserId =
+                            FirebaseAuth.instance.currentUser!.uid;
 
                         return ListView.builder(
                           reverse: true,
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 8),
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
                           itemCount: messages.length,
                           itemBuilder: (context, index) {
                             final msg = messages[index];
                             final isSender = msg['senderId'] == currentUserId;
-                            final timestamp =
-                                msg['timestamp'] as DateTime;
+                            final timestamp = msg['timestamp'] as DateTime;
                             final timeStr =
                                 '${timestamp.hour}:${timestamp.minute.toString().padLeft(2, '0')}';
 
@@ -272,9 +284,13 @@ class _ChatScreenState extends State<ChatScreen> {
                                   : Alignment.centerLeft,
                               child: Container(
                                 margin: const EdgeInsets.symmetric(
-                                    horizontal: 4, vertical: 4),
+                                  horizontal: 4,
+                                  vertical: 4,
+                                ),
                                 padding: const EdgeInsets.symmetric(
-                                    horizontal: 12, vertical: 8),
+                                  horizontal: 12,
+                                  vertical: 8,
+                                ),
                                 decoration: BoxDecoration(
                                   color: isSender
                                       ? _primaryGreen

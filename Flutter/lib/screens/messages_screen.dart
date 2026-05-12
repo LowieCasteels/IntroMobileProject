@@ -395,6 +395,18 @@ class _RequestCardState extends State<_RequestCard> {
                                         color: Color(0xFF2DBA8D),
                                       ),
                                     ),
+                                  if (widget.request.startDate != null &&
+                                      widget.request.endDate != null) ...[
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'Periode: ${widget.request.startDate!.toDate().day}/${widget.request.startDate!.toDate().month} - ${widget.request.endDate!.toDate().day}/${widget.request.endDate!.toDate().month}',
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        color: Color(0xFF8A8A8A),
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
                                 ],
                               ),
                             ),

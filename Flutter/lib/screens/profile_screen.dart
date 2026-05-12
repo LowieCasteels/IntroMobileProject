@@ -562,7 +562,7 @@ class _MyItemsInUseTab extends StatelessWidget {
         return ListView.separated(
           padding: const EdgeInsets.all(16),
           itemCount: docs.length,
-          separatorBuilder: (_, __) => const SizedBox(height: 10),
+          separatorBuilder: (_, _) => const SizedBox(height: 10),
           itemBuilder: (context, i) {
             final requestDoc = docs[i];
             final requestId = requestDoc.id;
@@ -635,7 +635,7 @@ class _MyReservationsTab extends StatelessWidget {
         return ListView.separated(
           padding: const EdgeInsets.all(16),
           itemCount: docs.length,
-          separatorBuilder: (_, __) => const SizedBox(height: 10),
+          separatorBuilder: (_, _) => const SizedBox(height: 10),
           itemBuilder: (context, i) {
             final requestDoc = docs[i];
             return _RequestApplianceRow(
@@ -667,7 +667,6 @@ class _RequestApplianceRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final requestData = requestDoc.data() as Map<String, dynamic>? ?? {};
-    final requestId = requestDoc.id;
     final applianceId = requestData['applianceId'] as String? ?? '';
     final currentUserId = FirebaseAuth.instance.currentUser?.uid;
     final ownerId = requestData['ownerId'] as String? ?? '';
@@ -691,12 +690,16 @@ class _RequestApplianceRow extends StatelessWidget {
         final nameData = rows != null && rows.length > 1
             ? rows[1]
             : <String, dynamic>{};
+        final startDate = requestData['startDate'] as Timestamp?;
+        final endDate = requestData['endDate'] as Timestamp?;
         final name = nameData['name'] as String? ?? 'Onbekend';
         return _ApplianceRow(
           data: rowData,
           badge: badge,
           badgeColor: badgeColor,
           subtitle: '$subtitlePrefix: $name',
+          startDate: startDate,
+          endDate: endDate,
         );
       },
     );
@@ -721,6 +724,8 @@ class _RequestApplianceRow extends StatelessWidget {
         'title': applianceData['title'] ?? 'Item',
         'base64Image': applianceData['base64Image'] ?? '',
         'address': applianceData['address'] ?? '',
+        'transactionType': applianceData['transactionType'] ?? 'leen',
+        'price': (applianceData['price'] ?? 0.0).toDouble(),
       },
       {'name': userDoc.data()?['name'] ?? userDoc.data()?['displayName'] ?? ''},
     ];
@@ -734,18 +739,24 @@ class _ApplianceRow extends StatelessWidget {
   final String badge;
   final Color badgeColor;
   final String subtitle;
+  final Timestamp? startDate;
+  final Timestamp? endDate;
 
   const _ApplianceRow({
     required this.data,
     required this.badge,
     required this.badgeColor,
     required this.subtitle,
+    this.startDate,
+    this.endDate,
   });
 
   @override
   Widget build(BuildContext context) {
     final title = data['title'] as String? ?? 'Item';
     final image = data['base64Image'] as String? ?? '';
+    final transactionType = data['transactionType'] as String? ?? 'leen';
+    final price = data['price'] as double? ?? 0.0;
     final address = data['address'] as String? ?? '';
 
     return Container(
@@ -754,7 +765,7 @@ class _ApplianceRow extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withAlpha(13),
             blurRadius: 10,
             offset: const Offset(0, 3),
           ),
@@ -774,7 +785,7 @@ class _ApplianceRow extends StatelessWidget {
                     width: 90,
                     height: 90,
                     fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => _placeholder(),
+                    errorBuilder: (_, _, _) => _placeholder(),
                   )
                 : _placeholder(),
           ),
@@ -827,6 +838,26 @@ class _ApplianceRow extends StatelessWidget {
                       ],
                     ),
                   ],
+                  if (startDate != null && endDate != null) ...[
+                    const SizedBox(height: 4),
+                    if (transactionType == 'huur')
+                      Text(
+                        '€${price.toStringAsFixed(0)}/dag | ${startDate!.toDate().day}/${startDate!.toDate().month} - ${endDate!.toDate().day}/${endDate!.toDate().month}',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF2DBA8D),
+                        ),
+                      )
+                    else
+                      Text(
+                        'Periode: ${startDate!.toDate().day}/${startDate!.toDate().month} - ${endDate!.toDate().day}/${endDate!.toDate().month}',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Color(0xFF8A8A8A),
+                        ),
+                      ),
+                  ],
                 ],
               ),
             ),
@@ -836,7 +867,7 @@ class _ApplianceRow extends StatelessWidget {
             margin: const EdgeInsets.only(right: 12),
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
             decoration: BoxDecoration(
-              color: badgeColor.withOpacity(0.12),
+              color: badgeColor.withAlpha(31),
               borderRadius: BorderRadius.circular(20),
             ),
             child: Text(
@@ -906,29 +937,4 @@ class _EmptyTab extends StatelessWidget {
       ),
     );
   }
-}
-
-// ── Sticky TabBar delegate ─────────────────────────────────────────────────────
-
-class _StickyTabBarDelegate extends SliverPersistentHeaderDelegate {
-  final TabBar tabBar;
-  const _StickyTabBarDelegate(this.tabBar);
-
-  @override
-  double get minExtent => tabBar.preferredSize.height;
-
-  @override
-  double get maxExtent => tabBar.preferredSize.height;
-
-  @override
-  Widget build(
-    BuildContext context,
-    double shrinkOffset,
-    bool overlapsContent,
-  ) {
-    return Container(color: Colors.white, child: tabBar);
-  }
-
-  @override
-  bool shouldRebuild(_StickyTabBarDelegate oldDelegate) => false;
 }

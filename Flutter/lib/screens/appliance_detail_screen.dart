@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_project/models/appliance.dart';
-import 'package:flutter_project/models/request.dart';
+import 'package:intl/intl.dart';
 
 class ApplianceDetailScreen extends StatefulWidget {
   final Appliance appliance;
@@ -17,6 +17,8 @@ class ApplianceDetailScreen extends StatefulWidget {
 class _ApplianceDetailScreenState extends State<ApplianceDetailScreen> {
   late Future<DocumentSnapshot> _ownerFuture;
   bool _isCurrentUserOwner = false;
+  DateTimeRange? _selectedDateRange;
+  bool _isLoading = false;
 
   static const Color _primaryGreen = Color(0xFF2DBA8D);
   static const Color _darkBg = Color(0xFF1A1A2E);
@@ -41,11 +43,52 @@ class _ApplianceDetailScreenState extends State<ApplianceDetailScreen> {
     return price.toStringAsFixed(2);
   }
 
+  Future<void> _selectDateRange() async {
+    final newDateRange = await showDateRangePicker(
+      context: context,
+      firstDate: DateTime.now(),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+      initialDateRange: _selectedDateRange,
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: _primaryGreen, // header background color
+              onPrimary: Colors.white, // header text color
+              onSurface: Colors.black, // body text color
+            ),
+            textButtonTheme: TextButtonThemeData(
+              style: TextButton.styleFrom(
+                foregroundColor: _primaryGreen, // button text color
+              ),
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (newDateRange != null) {
+      setState(() {
+        _selectedDateRange = newDateRange;
+      });
+    }
+  }
+
   Future<void> _handleRequestButton() async {
     final currentUser = FirebaseAuth.instance.currentUser;
     if (currentUser == null) return;
 
-    // Check if request already exists for this user+appliance
+    if (_selectedDateRange == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Selecteer een huurperiode.'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
     final existingRequest = await FirebaseFirestore.instance
         .collection('requests')
         .where('applianceId', isEqualTo: widget.appliance.id)
@@ -64,12 +107,16 @@ class _ApplianceDetailScreenState extends State<ApplianceDetailScreen> {
       return;
     }
 
+    setState(() => _isLoading = true);
+
     try {
       await FirebaseFirestore.instance.collection('requests').add({
         'applianceId': widget.appliance.id,
         'ownerId': widget.appliance.ownerId,
         'requesterId': currentUser.uid,
         'status': 'pending',
+        'startDate': Timestamp.fromDate(_selectedDateRange!.start),
+        'endDate': Timestamp.fromDate(_selectedDateRange!.end),
         'createdAt': Timestamp.now(),
         'respondedAt': null,
       });
@@ -93,6 +140,10 @@ class _ApplianceDetailScreenState extends State<ApplianceDetailScreen> {
           backgroundColor: Colors.red,
         ),
       );
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -237,6 +288,51 @@ class _ApplianceDetailScreenState extends State<ApplianceDetailScreen> {
                         ),
                       ),
 
+                      const SizedBox(height: 24),
+                      const Divider(color: Color(0xFFEEEEEE)),
+                      const SizedBox(height: 20),
+
+                      // Description
+                      const Text(
+                        'Huurperiode',
+                        style: TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF1A1A2E),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      InkWell(
+                        onTap: _selectDateRange,
+                        borderRadius: BorderRadius.circular(14),
+                        child: Container(
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: const Color(0xFFEEEEEE)),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                _selectedDateRange == null
+                                    ? 'Kies start- en einddatum'
+                                    : '${DateFormat('dd/MM/yyyy').format(_selectedDateRange!.start)} - ${DateFormat('dd/MM/yyyy').format(_selectedDateRange!.end)}',
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  color: Color(0xFF333333),
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              const Icon(
+                                Icons.calendar_today,
+                                color: _primaryGreen,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
                       const SizedBox(height: 24),
                       const Divider(color: Color(0xFFEEEEEE)),
                       const SizedBox(height: 20),
@@ -473,21 +569,30 @@ class _ApplianceDetailScreenState extends State<ApplianceDetailScreen> {
                   ],
                 ),
                 child: ElevatedButton.icon(
-                  onPressed: _handleRequestButton,
+                  onPressed: _isLoading ? null : _handleRequestButton,
                   icon: Icon(
                     isForRent
                         ? Icons.payments_outlined
                         : Icons.handshake_outlined,
                     color: Colors.white,
                   ),
-                  label: Text(
-                    isForRent ? 'Huur aanvragen' : 'Leen aanvragen',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 17,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
+                  label: _isLoading
+                      ? const SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 3,
+                          ),
+                        )
+                      : Text(
+                          isForRent ? 'Huur aanvragen' : 'Leen aanvragen',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 17,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: _primaryGreen,
                     minimumSize: const Size(double.infinity, 56),
