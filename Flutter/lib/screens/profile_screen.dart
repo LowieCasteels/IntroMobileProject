@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
+import 'package:flutter_project/screens/request_helpers.dart';
 
 import 'web/file_upload_stub.dart'
     if (dart.library.io) 'mobile/file_upload_io.dart';
@@ -563,12 +564,35 @@ class _MyItemsInUseTab extends StatelessWidget {
           itemCount: docs.length,
           separatorBuilder: (_, __) => const SizedBox(height: 10),
           itemBuilder: (context, i) {
-            final requestData = docs[i].data() as Map<String, dynamic>;
-            return _RequestApplianceRow(
-              requestData: requestData,
-              badge: 'In gebruik',
-              badgeColor: const Color(0xFF2DBA8D),
-              subtitlePrefix: 'Gereserveerd door',
+            final requestDoc = docs[i];
+            final requestId = requestDoc.id;
+            return Column(
+              children: [
+                _RequestApplianceRow(
+                  requestDoc: requestDoc,
+                  badge: 'In gebruik',
+                  badgeColor: const Color(0xFF2DBA8D),
+                  subtitlePrefix: 'Gereserveerd door',
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(top: 8.0),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () =>
+                          showReturnConfirmationDialog(context, requestId),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF2DBA8D),
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      child: const Text('Markeer als geretourneerd'),
+                    ),
+                  ),
+                ),
+              ],
             );
           },
         );
@@ -613,9 +637,9 @@ class _MyReservationsTab extends StatelessWidget {
           itemCount: docs.length,
           separatorBuilder: (_, __) => const SizedBox(height: 10),
           itemBuilder: (context, i) {
-            final requestData = docs[i].data() as Map<String, dynamic>;
+            final requestDoc = docs[i];
             return _RequestApplianceRow(
-              requestData: requestData,
+              requestDoc: requestDoc,
               badge: 'Geaccepteerd',
               badgeColor: const Color(0xFF2DBA8D),
               subtitlePrefix: 'Eigenaar',
@@ -628,13 +652,13 @@ class _MyReservationsTab extends StatelessWidget {
 }
 
 class _RequestApplianceRow extends StatelessWidget {
-  final Map<String, dynamic> requestData;
+  final DocumentSnapshot requestDoc;
   final String badge;
   final Color badgeColor;
   final String subtitlePrefix;
 
   const _RequestApplianceRow({
-    required this.requestData,
+    required this.requestDoc,
     required this.badge,
     required this.badgeColor,
     required this.subtitlePrefix,
@@ -642,6 +666,8 @@ class _RequestApplianceRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final requestData = requestDoc.data() as Map<String, dynamic>? ?? {};
+    final requestId = requestDoc.id;
     final applianceId = requestData['applianceId'] as String? ?? '';
     final currentUserId = FirebaseAuth.instance.currentUser?.uid;
     final ownerId = requestData['ownerId'] as String? ?? '';
@@ -654,7 +680,7 @@ class _RequestApplianceRow extends StatelessWidget {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const SizedBox(
             height: 90,
-            child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+            child: Center(child: CircularProgressIndicator(strokeWidth: 2.0)),
           );
         }
 

@@ -5,7 +5,8 @@ class Request {
   final String applianceId;
   final String ownerId;
   final String requesterId;
-  final String status; // 'pending', 'accepted', 'declined', 'cancelled'
+  final String
+  status; // 'pending', 'accepted', 'declined', 'cancelled', 'returned'
   final Timestamp createdAt;
   final Timestamp? respondedAt;
 

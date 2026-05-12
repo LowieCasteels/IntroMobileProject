@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_project/models/request.dart';
 import 'package:flutter_project/models/appliance.dart';
+import 'package:flutter_project/screens/request_helpers.dart';
 import 'package:flutter_project/screens/chat_screen.dart';
 
 class MessagesScreen extends StatefulWidget {
@@ -135,6 +136,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
                 ...pendingRequests
                     .map(
                       (req) => _RequestCard(
+                        key: ValueKey(req.id),
                         request: req,
                         currentUserId: currentUser.uid,
                         onAccept: currentUser.uid == req.ownerId
@@ -166,11 +168,16 @@ class _MessagesScreenState extends State<MessagesScreen> {
                 ...acceptedRequests
                     .map(
                       (req) => _RequestCard(
+                        key: ValueKey(req.id),
                         request: req,
                         currentUserId: currentUser.uid,
-                        onAccept: null,
-                        onDecline: null,
-                        onCancel: () => _handleCancel(req),
+                        onMarkAsReturned: currentUser.uid == req.ownerId
+                            ? () =>
+                                  showReturnConfirmationDialog(context, req.id)
+                            : null,
+                        onCancel: currentUser.uid == req.requesterId
+                            ? () => _handleCancel(req)
+                            : null,
                         onTap: () => _navigateToChat(req),
                       ),
                     )
@@ -234,14 +241,17 @@ class _RequestCard extends StatefulWidget {
   final String currentUserId;
   final VoidCallback? onAccept;
   final VoidCallback? onDecline;
+  final VoidCallback? onMarkAsReturned;
   final VoidCallback? onCancel;
   final VoidCallback onTap;
 
   const _RequestCard({
+    super.key,
     required this.request,
     required this.currentUserId,
-    required this.onAccept,
-    required this.onDecline,
+    this.onAccept,
+    this.onDecline,
+    this.onMarkAsReturned,
     required this.onCancel,
     required this.onTap,
   });
@@ -395,7 +405,8 @@ class _RequestCardState extends State<_RequestCard> {
                     // Action buttons
                     if (widget.onAccept != null ||
                         widget.onDecline != null ||
-                        widget.onCancel != null)
+                        widget.onCancel != null ||
+                        widget.onMarkAsReturned != null)
                       Padding(
                         padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
                         child: Row(
@@ -424,6 +435,17 @@ class _RequestCardState extends State<_RequestCard> {
                                   style: TextStyle(color: Colors.white),
                                 ),
                               ),
+                            if (widget.onMarkAsReturned != null)
+                              ElevatedButton(
+                                onPressed: widget.onMarkAsReturned,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF2DBA8D),
+                                ),
+                                child: const Text(
+                                  'Markeer als geretourneerd',
+                                  style: TextStyle(color: Colors.white),
+                                ),
+                              ),
                             if (widget.onCancel != null &&
                                 widget.onAccept == null)
                               TextButton(
@@ -439,10 +461,13 @@ class _RequestCardState extends State<_RequestCard> {
                             // Show status message for requester when pending
                             if (widget.onAccept == null &&
                                 widget.onCancel == null &&
-                                widget.onDecline == null)
+                                widget.onDecline == null &&
+                                widget.onMarkAsReturned == null)
                               Padding(
                                 padding: const EdgeInsets.symmetric(
-                                    horizontal: 12, vertical: 8),
+                                  horizontal: 12,
+                                  vertical: 8,
+                                ),
                                 child: Text(
                                   'Verzoek gestuurd',
                                   style: TextStyle(
