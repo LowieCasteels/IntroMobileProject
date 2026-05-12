@@ -9,6 +9,10 @@ class Request {
   status; // 'pending', 'accepted', 'declined', 'cancelled', 'returned'
   final Timestamp? startDate;
   final Timestamp? endDate;
+  final double? ownerRating;
+  final String? ownerReview;
+  final double? requesterRating;
+  final String? requesterReview;
   final Timestamp createdAt;
   final Timestamp? respondedAt;
 
@@ -20,6 +24,10 @@ class Request {
     required this.status,
     this.startDate,
     this.endDate,
+    this.ownerRating,
+    this.ownerReview,
+    this.requesterRating,
+    this.requesterReview,
     required this.createdAt,
     this.respondedAt,
   });
@@ -34,6 +42,10 @@ class Request {
       status: data['status'] ?? 'pending',
       startDate: data['startDate'],
       endDate: data['endDate'],
+      ownerRating: (data['ownerRating'] as num?)?.toDouble(),
+      ownerReview: data['ownerReview'],
+      requesterRating: (data['requesterRating'] as num?)?.toDouble(),
+      requesterReview: data['requesterReview'],
       createdAt: data['createdAt'] ?? Timestamp.now(),
       respondedAt: data['respondedAt'],
     );
@@ -47,6 +59,10 @@ class Request {
       'status': status,
       'startDate': startDate,
       'endDate': endDate,
+      'ownerRating': ownerRating,
+      'ownerReview': ownerReview,
+      'requesterRating': requesterRating,
+      'requesterReview': requesterReview,
       'createdAt': createdAt,
       'respondedAt': respondedAt,
     };

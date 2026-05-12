@@ -31,6 +31,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String? _photoUrl;
   String? _address;
   String? _name;
+  double _averageRating = 0.0;
+  int _ratingCount = 0;
 
   @override
   void initState() {
@@ -58,6 +60,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
             data['name'] ??
             data['displayName'] ??
             _auth.currentUser?.displayName;
+        final totalRating = (data['totalRating'] as num?)?.toDouble() ?? 0.0;
+        final ratingCount = (data['ratingCount'] as num?)?.toInt() ?? 0;
+        _ratingCount = ratingCount;
+        if (ratingCount > 0) {
+          _averageRating = totalRating / ratingCount;
+        }
       });
       _nameController.text = _name ?? '';
       _addressController.text = _address ?? '';
@@ -262,7 +270,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 )
                               : _photoUrl == null
                               ? Text(
-                                  _name?.substring(0, 1).toUpperCase() ?? '?',
+                                  _name != null && _name!.isNotEmpty
+                                      ? _name![0].toUpperCase()
+                                      : '?',
                                   style: const TextStyle(
                                     fontSize: 20,
                                     fontWeight: FontWeight.w500,
@@ -344,8 +354,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
             color: const Color(0xFF1F8A6A),
             child: Row(
               children: [
-                _buildStat('5', 'Beoordeling'),
-                _buildStat('23', 'Verhuren'),
+                _buildStat(
+                  _ratingCount > 0 ? _averageRating.toStringAsFixed(1) : '-',
+                  'Beoordeling (${_ratingCount.toString()})',
+                ),
+                _buildStat('0', 'Verhuren'), // Placeholder
               ],
             ),
           ),

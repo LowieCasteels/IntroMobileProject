@@ -78,7 +78,9 @@ class _MessagesScreenState extends State<MessagesScreen> {
                 (r) =>
                     (r.ownerId == currentUser.uid ||
                         r.requesterId == currentUser.uid) &&
-                    (r.status == 'pending' || r.status == 'accepted'),
+                    (r.status == 'pending' ||
+                        r.status == 'accepted' ||
+                        r.status == 'returned'),
               )
               .toList();
 
@@ -89,8 +91,13 @@ class _MessagesScreenState extends State<MessagesScreen> {
           final acceptedRequests = requests
               .where((r) => r.status == 'accepted')
               .toList();
+          final completedRequests = requests
+              .where((r) => r.status == 'returned')
+              .toList();
 
-          if (pendingRequests.isEmpty && acceptedRequests.isEmpty) {
+          if (pendingRequests.isEmpty &&
+              acceptedRequests.isEmpty &&
+              completedRequests.isEmpty) {
             return Center(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -183,6 +190,35 @@ class _MessagesScreenState extends State<MessagesScreen> {
                     )
                     .toList(),
               ],
+              if (completedRequests.isNotEmpty) ...[
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                  child: Text(
+                    'Voltooid',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.grey[700],
+                    ),
+                  ),
+                ),
+                ...completedRequests
+                    .map(
+                      (req) => _RequestCard(
+                        key: ValueKey(req.id),
+                        request: req,
+                        currentUserId: currentUser.uid,
+                        onReview: () => showReviewDialog(
+                          context: context,
+                          request: req,
+                          currentUserId: currentUser.uid,
+                        ),
+                        onCancel: null, // Cannot cancel completed
+                        onTap: () => _navigateToChat(req),
+                      ),
+                    )
+                    .toList(),
+              ],
             ],
           );
         },
@@ -243,6 +279,7 @@ class _RequestCard extends StatefulWidget {
   final VoidCallback? onDecline;
   final VoidCallback? onMarkAsReturned;
   final VoidCallback? onCancel;
+  final VoidCallback? onReview;
   final VoidCallback onTap;
 
   const _RequestCard({
@@ -252,6 +289,7 @@ class _RequestCard extends StatefulWidget {
     this.onAccept,
     this.onDecline,
     this.onMarkAsReturned,
+    this.onReview,
     required this.onCancel,
     required this.onTap,
   });
@@ -313,6 +351,13 @@ class _RequestCardState extends State<_RequestCard> {
             final otherUserName = userData?['name'] ?? 'Onbekend';
 
             final isOwner = widget.currentUserId == widget.request.ownerId;
+            final canReview =
+                widget.onReview != null &&
+                ((isOwner && widget.request.requesterRating == null) ||
+                    (!isOwner && widget.request.ownerRating == null));
+            final hasReviewed =
+                (isOwner && widget.request.requesterRating != null) ||
+                (!isOwner && widget.request.ownerRating != null);
 
             return Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -418,7 +463,8 @@ class _RequestCardState extends State<_RequestCard> {
                     if (widget.onAccept != null ||
                         widget.onDecline != null ||
                         widget.onCancel != null ||
-                        widget.onMarkAsReturned != null)
+                        widget.onMarkAsReturned != null ||
+                        canReview)
                       Padding(
                         padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
                         child: Row(
@@ -458,6 +504,17 @@ class _RequestCardState extends State<_RequestCard> {
                                   style: TextStyle(color: Colors.white),
                                 ),
                               ),
+                            if (canReview)
+                              ElevatedButton(
+                                onPressed: widget.onReview,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.amber[700],
+                                ),
+                                child: const Text(
+                                  'Beoordelen',
+                                  style: TextStyle(color: Colors.white),
+                                ),
+                              ),
                             if (widget.onCancel != null &&
                                 widget.onAccept == null)
                               TextButton(
@@ -474,7 +531,9 @@ class _RequestCardState extends State<_RequestCard> {
                             if (widget.onAccept == null &&
                                 widget.onCancel == null &&
                                 widget.onDecline == null &&
-                                widget.onMarkAsReturned == null)
+                                widget.onMarkAsReturned == null &&
+                                !canReview &&
+                                !hasReviewed)
                               Padding(
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 12,
@@ -486,6 +545,20 @@ class _RequestCardState extends State<_RequestCard> {
                                     color: Colors.grey[600],
                                     fontWeight: FontWeight.w600,
                                     fontSize: 14,
+                                  ),
+                                ),
+                              ),
+                            if (hasReviewed)
+                              const Padding(
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 8,
+                                ),
+                                child: Text(
+                                  'Beoordeeld',
+                                  style: TextStyle(
+                                    color: Colors.grey,
+                                    fontWeight: FontWeight.w600,
                                   ),
                                 ),
                               ),
