@@ -17,6 +17,7 @@ class ApplianceDetailScreen extends StatefulWidget {
 
 class _ApplianceDetailScreenState extends State<ApplianceDetailScreen> {
   late Future<DocumentSnapshot> _ownerFuture;
+  late Future<List<Map<String, dynamic>>> _reviewsFuture;
   bool _isCurrentUserOwner = false;
   DateTimeRange? _selectedDateRange;
   bool _isLoading = false;
@@ -31,10 +32,61 @@ class _ApplianceDetailScreenState extends State<ApplianceDetailScreen> {
         .collection('flutterUsers')
         .doc(widget.appliance.ownerId)
         .get();
+    _reviewsFuture = _fetchReviews();
 
     final currentUser = FirebaseAuth.instance.currentUser;
     _isCurrentUserOwner =
         currentUser != null && currentUser.uid == widget.appliance.ownerId;
+  }
+
+  Future<List<Map<String, dynamic>>> _fetchReviews() async {
+    final List<Map<String, dynamic>> reviews = [];
+    try {
+      final requestsSnapshot = await FirebaseFirestore.instance
+          .collection('requests')
+          .where('applianceId', isEqualTo: widget.appliance.id)
+          .where('status', isEqualTo: 'returned')
+          .orderBy('respondedAt', descending: true)
+          .get();
+
+      final requestsWithReviews = requestsSnapshot.docs.where((doc) {
+        final data = doc.data();
+        // A review is valid if it has a rating. The text is optional.
+        return data.containsKey('ownerRating') && data['ownerRating'] != null;
+      }).toList();
+
+      if (requestsWithReviews.isEmpty) return [];
+
+      final userFutures = requestsWithReviews.map((requestDoc) {
+        final requesterId = requestDoc.data()['requesterId'];
+        return FirebaseFirestore.instance
+            .collection('flutterUsers')
+            .doc(requesterId)
+            .get();
+      }).toList();
+
+      final userSnapshots = await Future.wait(userFutures);
+
+      for (var i = 0; i < requestsWithReviews.length; i++) {
+        final requestDoc = requestsWithReviews[i];
+        final userDoc = userSnapshots[i];
+
+        if (userDoc.exists) {
+          final requestData = requestDoc.data();
+          final userData = userDoc.data()!;
+          reviews.add({
+            'rating': (requestData['ownerRating'] as num?)?.toDouble() ?? 0.0,
+            'review': requestData['ownerReview'], // Can be null
+            'reviewerName': userData['name'] ?? 'Anoniem',
+            'reviewerPhotoUrl': userData['photoUrl'],
+            'reviewerPhotoBase64': userData['photoBase64'],
+          });
+        }
+      }
+    } catch (e) {
+      print('Error fetching reviews: $e');
+    }
+    return reviews;
   }
 
   String _formatPrice(double price) {
@@ -560,6 +612,13 @@ class _ApplianceDetailScreenState extends State<ApplianceDetailScreen> {
                           );
                         },
                       ),
+
+                      const SizedBox(height: 24),
+                      const Divider(color: Color(0xFFEEEEEE)),
+                      const SizedBox(height: 20),
+
+                      // Reviews Section
+                      _buildReviewsSection(),
                     ],
                   ),
                 ),
@@ -634,6 +693,100 @@ class _ApplianceDetailScreenState extends State<ApplianceDetailScreen> {
       ),
     );
   }
+
+  Widget _buildReviewsSection() {
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: _reviewsFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Beoordelingen',
+                style: TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF1A1A2E),
+                ),
+              ),
+              const SizedBox(height: 12),
+              const Center(child: CircularProgressIndicator()),
+            ],
+          );
+        }
+
+        final reviews = snapshot.data ?? [];
+        final reviewCount = reviews.length;
+        final double averageRating = reviewCount > 0
+            ? reviews
+                      .map((r) => r['rating'] as double)
+                      .reduce((a, b) => a + b) /
+                  reviewCount
+            : 0.0;
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                const Text(
+                  'Beoordelingen',
+                  style: TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF1A1A2E),
+                  ),
+                ),
+                if (reviewCount > 0) ...[
+                  const SizedBox(width: 10),
+                  const Icon(Icons.star, color: Colors.amber, size: 20),
+                  const SizedBox(width: 4),
+                  Text(
+                    '${averageRating.toStringAsFixed(1)} (${reviewCount} beoordeling${reviewCount == 1 ? '' : 'en'})',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF555555),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+            const SizedBox(height: 12),
+            if (snapshot.hasError || reviews.isEmpty)
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: const Color(0xFFEEEEEE)),
+                ),
+                child: Center(
+                  child: Text(
+                    snapshot.hasError
+                        ? 'Fout bij laden van beoordelingen.'
+                        : 'Nog geen beoordelingen voor dit item.',
+                    style: const TextStyle(color: Colors.grey),
+                  ),
+                ),
+              )
+            else
+              ListView.separated(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: reviews.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 12),
+                itemBuilder: (context, index) {
+                  return _ReviewCard(review: reviews[index]);
+                },
+              ),
+          ],
+        );
+      },
+    );
+  }
 }
 
 // ── Badge widget (reused from home_screen style) ───────────────────────────────
@@ -673,6 +826,100 @@ class _Badge extends StatelessWidget {
               letterSpacing: 0.8,
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ReviewCard extends StatelessWidget {
+  final Map<String, dynamic> review;
+
+  const _ReviewCard({required this.review});
+
+  @override
+  Widget build(BuildContext context) {
+    final reviewerName = review['reviewerName'] as String;
+    final rating = review['rating'] as double;
+    final reviewText = review['review'] as String?;
+
+    ImageProvider? reviewerPhoto;
+    if (review['reviewerPhotoBase64'] != null) {
+      reviewerPhoto = MemoryImage(base64Decode(review['reviewerPhotoBase64']));
+    } else if (review['reviewerPhotoUrl'] != null) {
+      final String photoUrl = review['reviewerPhotoUrl'];
+      if (photoUrl.startsWith('base64:')) {
+        reviewerPhoto = MemoryImage(base64Decode(photoUrl.substring(7)));
+      } else if (photoUrl.isNotEmpty) {
+        reviewerPhoto = NetworkImage(photoUrl);
+      }
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFEEEEEE)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              // Avatar
+              CircleAvatar(
+                radius: 20,
+                backgroundColor: const Color(0xFFE8F8F4),
+                backgroundImage: reviewerPhoto,
+                child: reviewerPhoto == null
+                    ? Text(
+                        reviewerName.isNotEmpty
+                            ? reviewerName[0].toUpperCase()
+                            : '?',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF2DBA8D),
+                        ),
+                      )
+                    : null,
+              ),
+              const SizedBox(width: 12),
+              // Name and Stars
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      reviewerName,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF1A1A2E),
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Row(
+                      children: List.generate(5, (index) {
+                        return Icon(
+                          index < rating ? Icons.star : Icons.star_border,
+                          color: Colors.amber,
+                          size: 16,
+                        );
+                      }),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          if (reviewText != null && reviewText.trim().isNotEmpty) ...[
+            const SizedBox(height: 12),
+            // Review text
+            Text(
+              reviewText,
+              style: const TextStyle(color: Color(0xFF555555), height: 1.5),
+            ),
+          ],
         ],
       ),
     );

@@ -185,7 +185,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                     final title = notification['title'] ?? '';
                     final body = notification['body'] ?? '';
                     final timestamp = (notification['createdAt'] as Timestamp?)
-                        ?.toDate();
+                        ?.toDate(); // Ensure timestamp is handled correctly
+
                     final isRead = notification['isRead'] ?? true;
                     final requestId = notification['requestId'] as String?;
 

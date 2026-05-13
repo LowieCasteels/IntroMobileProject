@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
+import 'package:flutter_project/screens/my_items_screen.dart'; // Import the new screen
 import 'package:flutter_project/screens/request_helpers.dart';
 import 'package:flutter_project/screens/notifications_screen.dart';
 
@@ -34,6 +35,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String? _name;
   double _averageRating = 0.0;
   int _ratingCount = 0;
+  Stream<int>? _myItemsCountStream; // Stream for active item count
   Stream<int>? _unreadNotificationsStream;
 
   @override
@@ -43,6 +45,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _addressController = TextEditingController();
     _loadProfile();
     _setupNotificationsStream();
+    _setupMyItemsCountStream(); // Setup the new stream
   }
 
   Future<void> _loadProfile() async {
@@ -72,6 +75,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
       });
       _nameController.text = _name ?? '';
       _addressController.text = _address ?? '';
+    }
+  }
+
+  void _setupMyItemsCountStream() {
+    final uid = _auth.currentUser?.uid;
+    if (uid == null) return;
+    if (mounted) {
+      setState(() {
+        _myItemsCountStream = _firestore
+            .collection('appliances')
+            .where('ownerId', isEqualTo: uid)
+            .where('isVisible', isEqualTo: true) // Only count active items
+            .snapshots()
+            .map((snapshot) => snapshot.docs.length);
+      });
     }
   }
 
@@ -421,10 +439,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
             child: Row(
               children: [
                 _buildStat(
+                  // First stat: Reviews
                   _ratingCount > 0 ? _averageRating.toStringAsFixed(1) : '-',
                   'Beoordeling (${_ratingCount.toString()})',
                 ),
-                _buildStat('0', 'Verhuren'), // Placeholder
+                // Second stat: My Items (now dynamic and tappable)
+                StreamBuilder<int>(
+                  stream: _myItemsCountStream,
+                  builder: (context, snapshot) {
+                    final itemCount = snapshot.data ?? 0;
+                    return _buildStat(
+                      itemCount.toString(),
+                      'Mijn items',
+                      isLast: true, // Already true, no change needed here.
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(builder: (_) => MyItemsScreen()),
+                        );
+                      },
+                    );
+                  },
+                ),
               ],
             ),
           ),
@@ -433,7 +468,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildStat(String value, String label, {bool isLast = false}) {
+  Widget _buildStat(
+    String value,
+    String label, {
+    bool isLast = false,
+    VoidCallback? onTap,
+  }) {
     return Expanded(
       child: Container(
         decoration: BoxDecoration(
@@ -443,25 +483,34 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   right: BorderSide(color: Color(0xFF185FA5), width: 0.5),
                 ),
         ),
-        child: Column(
-          children: [
-            Text(
-              value,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 18,
-                fontWeight: FontWeight.w500,
-              ),
+        child: InkWell(
+          // Make the stat tappable
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              vertical: 8.0,
+            ), // Add some padding for better tap area
+            child: Column(
+              children: [
+                Text(
+                  value,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  label,
+                  style: const TextStyle(
+                    color: Color.fromARGB(255, 255, 255, 255),
+                    fontSize: 11,
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 2),
-            Text(
-              label,
-              style: const TextStyle(
-                color: Color.fromARGB(255, 255, 255, 255),
-                fontSize: 11,
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );

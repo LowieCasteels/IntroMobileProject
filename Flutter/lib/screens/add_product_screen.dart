@@ -5,10 +5,12 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:flutter_project/models/appliance.dart'; // Import Appliance model
 
 // Firebase Storage is niet langer nodig voor het uploaden van afbeeldingen
 class AddProductScreen extends StatefulWidget {
-  const AddProductScreen({super.key});
+  final Appliance? applianceToEdit; // Optional appliance for editing
+  const AddProductScreen({super.key, this.applianceToEdit});
 
   @override
   State<AddProductScreen> createState() => _AddProductScreenState();
@@ -53,6 +55,10 @@ class _AddProductScreenState extends State<AddProductScreen> {
       setState(() {});
     });
     _fetchUserAddress();
+
+    if (widget.applianceToEdit != null) {
+      _prefillFormForEdit(widget.applianceToEdit!);
+    }
   }
 
   Future<void> _fetchUserAddress() async {
@@ -70,6 +76,27 @@ class _AddProductScreenState extends State<AddProductScreen> {
               'Geen locatie ingesteld';
         });
       }
+    }
+  }
+
+  void _prefillFormForEdit(Appliance appliance) {
+    _titleController.text = appliance.title;
+    _descriptionController.text = appliance.description;
+    _base64Image = appliance.base64Image;
+    _selectedCategory = appliance.category;
+    _isVisible = appliance.isVisible;
+
+    if (appliance.transactionType == 'huur') {
+      _transactionType = [false, true];
+      _priceController.text = appliance.price.toString();
+    } else {
+      _transactionType = [true, false];
+    }
+    // No need to fetch address again, it's part of the appliance data
+    if (mounted) {
+      setState(() {
+        _userAddress = appliance.address;
+      });
     }
   }
 
@@ -150,7 +177,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
 
       final isForRent = _transactionType[1];
 
-      await FirebaseFirestore.instance.collection('appliances').add({
+      final Map<String, dynamic> applianceData = {
         'ownerId': user.uid,
         'title': _titleController.text.trim(),
         'description': _descriptionController.text.trim(),
@@ -163,15 +190,33 @@ class _AddProductScreenState extends State<AddProductScreen> {
         'isVisible': _isVisible,
         'createdAt': FieldValue.serverTimestamp(),
         'address': address, // Voeg het adres van de gebruiker toe
-        'lat': lat,
-        'lng': lng,
-      });
+        if (lat != null) 'lat': lat,
+        if (lng != null) 'lng': lng,
+      };
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Product succesvol toegevoegd!')),
-        );
-        _clearForm();
+      if (widget.applianceToEdit == null) {
+        // Add new appliance
+        await FirebaseFirestore.instance
+            .collection('appliances')
+            .add(applianceData);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Product succesvol toegevoegd!')),
+          );
+          _clearForm();
+        }
+      } else {
+        // Update existing appliance
+        await FirebaseFirestore.instance
+            .collection('appliances')
+            .doc(widget.applianceToEdit!.id)
+            .update(applianceData);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Product succesvol bijgewerkt!')),
+          );
+          Navigator.of(context).pop(); // Go back after editing
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -200,7 +245,11 @@ class _AddProductScreenState extends State<AddProductScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Toestel aanbieden'),
+        title: Text(
+          widget.applianceToEdit == null
+              ? 'Toestel aanbieden'
+              : 'Toestel bewerken',
+        ),
         backgroundColor: Color(Colors.white.value),
         actions: [
           IconButton(
